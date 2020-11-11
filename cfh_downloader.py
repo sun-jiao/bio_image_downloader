@@ -27,7 +27,7 @@ async def async_save(url, directory):
 
 
 class CfhSpecies:
-    def __init__(self, name, directory, size = 0, page_size = 100, check = None):
+    def __init__(self, name, directory, size = 0, page_size = 25, check = None):
         self.name = name # species name, scientific or vernacular are both ok
         self.directory = './download/cfh/' + directory
         self.size = size
@@ -64,7 +64,7 @@ class CfhSpecies:
 
     def download(self):
         if (self.id is None) | (self.size <= 0):
-            print("Nothing to download for " + self.name + "to" + self.directory)
+            print("Nothing to download for " + self.name + " to " + self.directory)
             return
         for index in range(math.ceil(self.size/self.page_size)):
             image_list_url = "http://www.cfh.ac.cn/AjaxServer/Server.ashx?service=photoset&method=get&spid=" + str(
@@ -114,14 +114,18 @@ class CfhSpecies:
 
                 self.downloaded += 1
 
+                if len(photo_list) >= self.page_size:
+                    loop = asyncio.get_event_loop()
+                    tasks = [async_save(url, self.directory) for url in photo_list]
+                    loop.run_until_complete(asyncio.wait(tasks))
+                    photo_list = []
+
                 if self.downloaded >= self.size:
+                    loop = asyncio.get_event_loop()
+                    tasks = [async_save(url, self.directory) for url in photo_list]
+                    loop.run_until_complete(asyncio.wait(tasks))
                     break
-
-            loop = asyncio.get_event_loop()
-            tasks = [async_save(url, self.directory) for url in photo_list]
-            loop.run_until_complete(asyncio.wait(tasks))
-
-            # async download End
+                # async download End
 
         print("Download complete")
 
@@ -130,7 +134,7 @@ class CfhSpecies:
 if __name__ == '__main__':
     start = datetime.now()
 
-    butterfly = CfhSpecies(name="金裳凤蝶", directory="Troides aeacus", page_size= 25, check=False)
+    butterfly = CfhSpecies(name="金裳凤蝶", directory="Troides aeacus test", page_size= 25, check=False)
     butterfly.get_species_id()
     butterfly.download()
 
