@@ -1,7 +1,7 @@
 #coding:utf-8
 
-from from_csv import open_csv
+from from_csv import open_csv, update_csv
 
 if __name__ == '__main__':
-    open_csv('butt.csv')
+    update_csv('butt.csv', './download/cfh/')
 

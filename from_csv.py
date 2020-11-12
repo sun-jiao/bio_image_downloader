@@ -1,12 +1,25 @@
 #coding:utf-8
 
 import csv
-from cfh_downloader import CfhSpecies
+import os
+
+from cfh_downloader import CfhDownloader
 
 def open_csv(filename):
     with open(filename, encoding='gbk') as file:
         f_csv = csv.reader(file)
         for row in f_csv:
-            butterfly = CfhSpecies(name=row[0], directory=row[1], check=False)
+            butterfly = CfhDownloader(name=row[0], directory=row[1], check=False)
             butterfly.get_species_id()
             butterfly.download()
+
+def update_csv(filename, directory):
+    with open(filename, 'r', encoding='gbk') as file:
+        rows_csv = csv.reader(file)
+        for row in rows_csv:
+            folder_path = directory + row[1]
+            if os.path.isdir(folder_path):
+                length = str(len(os.listdir(folder_path)))
+                print(row[0] + ',' + row[1] + ',' + length)
+            else:
+                print(row[0] + ',' + row[1] + ',' + '0')
