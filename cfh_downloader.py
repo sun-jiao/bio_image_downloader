@@ -11,7 +11,7 @@ from fake_useragent import UserAgent
 
 async def fetch(client, url):
     ua = UserAgent(use_cache_server=False)
-    async with client.get(url, headers={
+    async with client.get(url, proxy='http://127.0.0.1:8124', headers={
         'User-Agent': ua.random,
         'Host': 'www.cfh.ac.cn', }) as resp:
         return await resp.read()
@@ -66,6 +66,9 @@ class CfhSpecies:
         if (self.id is None) | (self.size <= 0):
             print("Nothing to download for " + self.name + " to " + self.directory)
             return
+        else:
+            print("Start downloading for " + self.name + " to " + self.directory)
+
         for index in range(math.ceil(self.size/self.page_size)):
             image_list_url = "http://www.cfh.ac.cn/AjaxServer/Server.ashx?service=photoset&method=get&spid=" + str(
                 self.id) + "&pagesize=" + str(self.size) + "&page=" + str(index + 1)
@@ -123,7 +126,8 @@ class CfhSpecies:
                 if self.downloaded >= self.size:
                     loop = asyncio.get_event_loop()
                     tasks = [async_save(url, self.directory) for url in photo_list]
-                    loop.run_until_complete(asyncio.wait(tasks))
+                    if len(tasks) > 0:
+                        loop.run_until_complete(asyncio.wait(tasks))
                     break
                 # async download End
 
