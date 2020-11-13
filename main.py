@@ -1,7 +1,7 @@
 #coding:utf-8
 
-from from_csv import open_csv, update_csv
+import from_csv
 
 if __name__ == '__main__':
-    update_csv('butt.csv', './download/cfh/')
+    from_csv.from_csv_in_gbif('butt.csv')
 

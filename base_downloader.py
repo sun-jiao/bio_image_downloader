@@ -31,7 +31,7 @@ class BaseDownloader(metaclass=ABCMeta):
     photo_list_key = ''
     host = ''
 
-    def __init__(self, name, directory, size = 0, page_size = 25, check = None):
+    def __init__(self, name, directory, size = 0, page_size = 25, check = None, folder_size = 0):
         self.name = name # species name, scientific or vernacular are both ok
         self.directory = './download/' + directory
         self.size = size
@@ -40,6 +40,7 @@ class BaseDownloader(metaclass=ABCMeta):
         self.id = None
         self.page_size = page_size
         self.check = check # name check, None: DO NOT check; True: scientific name; False: chinese vernacular name
+        self.folder_size = folder_size
 
         self.get_species_id()
 
@@ -70,10 +71,7 @@ class BaseDownloader(metaclass=ABCMeta):
 
             try:
                 data = json.loads(image_list.text)[self.photo_list_key]
-            except KeyError as ke:
-                print(ke)
-                print(data)
-                print(image_list_url)
+            except KeyError:
                 break
 
             # download links in this page.
@@ -82,8 +80,12 @@ class BaseDownloader(metaclass=ABCMeta):
 
             photo_list = []
 
-            for index in range(self.page_size):
-                img_url = self.get_image_url(data[index])
+            if 0 < self.folder_size < len(os.listdir(self.directory)):
+                print('folder size meet,', end=' ')
+                break
+
+            for jndex in range(self.page_size):
+                img_url = self.get_image_url(data[jndex])
                 print('Downloading ' + str(self.downloaded + 1) + '/' + str(self.size) +': ' + str(img_url))
 
                 # sync download Start

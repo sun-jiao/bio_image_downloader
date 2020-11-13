@@ -17,38 +17,35 @@ class GbifDownloader(BaseDownloader):
         species_json = json.loads(species_data.text)
 
         if len(species_json) > 0:
-            position_in_json = 0
             if self.check is not None:
                 species_json = species_json[self.photo_list_key]
                 for index in range(len(species_json)):
-                    if self.check & (self.name == species_json[index]['scientificName']) \
-                            & (species_json[index]['taxonID'] == 'gbif:' + str(species_json[index]['key'])):
-                        position_in_json = index
+                    if self.check & (self.name == species_json[index]['canonicalName']) \
+                            and (species_json[index]['taxonID'] == 'gbif:' + str(species_json[index]['key'])):
+                        self.id = species_json[index]['key']
+
+                        image_list_url = "https://api.gbif.org/v1/occurrence/search?taxonkey=" + str(
+                            self.id) + "&limit=1&offset=0&mediaType=StillImage&basisOfRecord=HUMAN_OBSERVATION"
+                        image_list = requests.get(image_list_url, headers=self.get_header())
+                        server_size = json.loads(image_list.text)['count']
+                        if self.size <= 0 or self.size >= server_size:
+                            self.size = server_size
                         break
                     else:
                         continue
 
-            self.id = species_json[position_in_json]['key']
-
-            if self.size <= 0:
-                image_list_url = "https://api.gbif.org/v1/occurrence/search?taxonkey=" + str(self.id) + "&limit=0&offset=0"
-                image_list = requests.get(image_list_url, headers=self.get_header())
-
-                self.size = json.loads(image_list.text)['count']
-
     def get_image_list_url(self, index):
         return "https://api.gbif.org/v1/occurrence/search?taxonkey=" + str(
-            self.id) + "&limit=" + str(self.page_size) + "&offset=" + str(index * self.page_size)
+            self.id) + "&limit=" + str(self.page_size) + "&offset=" + str(index * self.page_size) + '&mediaType=StillImage&basisOfRecord=HUMAN_OBSERVATION'
 
     def get_image_url(self, json_item):
         url_list = []
-        if json_item['basisOfRecord']=="HUMAN_OBSERVATION":
-            json_list = json_item['media']
-            for media_item in json_list:
-                try:
-                    url_list.append('https://api.gbif.org/v1/image/unsafe/' + str(media_item['identifier']))
-                except:
-                    pass
+        json_list = json_item['media']
+        for media_item in json_list:
+            try:
+                url_list.append('https://api.gbif.org/v1/image/unsafe/' + str(media_item['identifier']))
+            except:
+                pass
         return url_list
 
 # test:
