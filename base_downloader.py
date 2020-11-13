@@ -10,24 +10,25 @@ from fake_useragent import UserAgent
 from abc import abstractmethod,ABCMeta
 
 
-async def fetch(client, url, host):
+async def fetch(client, url, header):
     ua = UserAgent(use_cache_server=False)
-    async with client.get(url, proxy='http://127.0.0.1:8124', headers={
-        'User-Agent': ua.random,
-        'Host': host, }) as resp:
+    async with client.get(url, proxy='http://127.0.0.1:8124', headers=header) as resp:
         return await resp.read()
 
 
-async def async_save(url, directory, host):
+async def async_save(url, directory, header):
     async with aiohttp.ClientSession() as client:
-        image = await fetch(client, url, host)
+        image = await fetch(client, url, header)
         split_list = url.split('/')
-        f = await aiofiles.open(directory + '/' + split_list[len(split_list) - 1], mode='wb')
+        filename = split_list[len(split_list)- 1]
+        if not filename.lower().endswith('.jpg'):
+            filename = filename + '.jpg'
+        f = await aiofiles.open(directory + '/' + filename , mode='wb')
         await f.write(image)
         await f.close()
 
 class BaseDownloader(metaclass=ABCMeta):
-    photo_list_key = 'photolist'
+    photo_list_key = ''
     host = ''
 
     def __init__(self, name, directory, size = 0, page_size = 25, check = None):
@@ -43,13 +44,7 @@ class BaseDownloader(metaclass=ABCMeta):
         self.get_species_id()
 
     @abstractmethod
-    def get_query_url(self):pass
-
-    @abstractmethod
-    def get_header(self):pass
-
-    @abstractmethod
-    def get_id_from_query(self, species_json):pass
+    def get_species_id(self):pass
 
     @abstractmethod
     def get_image_list_url(self, index):pass
@@ -57,12 +52,10 @@ class BaseDownloader(metaclass=ABCMeta):
     @abstractmethod
     def get_image_url(self, json_item):pass
 
-    def get_species_id(self):
-        id_query_url = self.get_query_url()
-
-        species_data = requests.get(id_query_url, headers=self.get_header())
-        species_json = json.loads(species_data.text)
-        self.get_id_from_query(species_json)
+    def get_header(self):
+        return {
+            'User-Agent': self.ua.random,
+            'Host': self.host, }
 
     def download(self):
         if (self.id is None) | (self.size <= 0):
@@ -77,7 +70,10 @@ class BaseDownloader(metaclass=ABCMeta):
 
             try:
                 data = json.loads(image_list.text)[self.photo_list_key]
-            except KeyError:
+            except KeyError as ke:
+                print(ke)
+                print(data)
+                print(image_list_url)
                 break
 
             # download links in this page.
@@ -86,8 +82,8 @@ class BaseDownloader(metaclass=ABCMeta):
 
             photo_list = []
 
-            while self.downloaded < self.size:
-                img_url = self.get_image_url(data[self.downloaded])
+            for index in range(self.page_size):
+                img_url = self.get_image_url(data[index])
                 print('Downloading ' + str(self.downloaded + 1) + '/' + str(self.size) +': ' + str(img_url))
 
                 # sync download Start
@@ -111,23 +107,17 @@ class BaseDownloader(metaclass=ABCMeta):
                 # sync download End
 
                 # async download Start
-                photo_list.append(img_url)
+                photo_list.extend(img_url)
 
                 self.downloaded += 1
 
-                if len(photo_list) >= self.page_size:
-                    loop = asyncio.get_event_loop()
-                    tasks = [async_save(url, self.directory, self.host) for url in photo_list]
-                    loop.run_until_complete(asyncio.wait(tasks))
-                    photo_list = []
-                    continue
-
                 if self.downloaded >= self.size:
-                    loop = asyncio.get_event_loop()
-                    tasks = [async_save(url, self.directory, self.host) for url in photo_list]
-                    if len(tasks) > 0:
-                        loop.run_until_complete(asyncio.wait(tasks))
                     break
-                # async download End
+
+            loop = asyncio.get_event_loop()
+            tasks = [async_save(url, self.directory, self.get_header()) for url in photo_list]
+            if len(tasks) > 0:
+                loop.run_until_complete(asyncio.wait(tasks))
+            # async download End
 
         print("Download complete")
