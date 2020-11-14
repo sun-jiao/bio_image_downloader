@@ -7,7 +7,7 @@ from cfh_downloader import CfhDownloader
 from gbif_downloader import GbifDownloader
 
 
-def open_csv(filename):
+def from_csv_in_cfh(filename):
     with open(filename, encoding='gbk') as file:
         f_csv = csv.reader(file)
         for row in f_csv:
