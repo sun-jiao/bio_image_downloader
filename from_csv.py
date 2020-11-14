@@ -14,16 +14,17 @@ def from_csv_in_cfh(filename):
             butterfly = CfhDownloader(name=row[0], directory=row[1], check=False)
             butterfly.download()
 
-def update_csv(filename, directory = './download/'):
+def update_csv(filename, new_csv, directory = './download/'):
+    new_csv_file = open(new_csv, 'a', encoding='gbk')
     with open(filename, 'r', encoding='gbk') as file:
         rows_csv = csv.reader(file)
         for row in rows_csv:
             folder_path = directory + row[1]
             if os.path.isdir(folder_path):
                 length = str(len(os.listdir(folder_path)))
-                print(row[0] + ',' + row[1] + ',' + length)
+                new_csv_file.write(row[0] + ',' + row[1] + ',' + length + '\r\n')
             else:
-                print(row[0] + ',' + row[1] + ',' + 'None')
+                new_csv_file.write(row[0] + ',' + row[1] + ',' + '0' + '\r\n')
 
 def from_csv_in_gbif(filename):
     with open(filename, encoding='gbk') as file:
