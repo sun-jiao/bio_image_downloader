@@ -14,7 +14,7 @@ def open_csv(filename):
             butterfly = CfhDownloader(name=row[0], directory=row[1], check=False)
             butterfly.download()
 
-def update_csv(filename, directory):
+def update_csv(filename, directory = './download/'):
     with open(filename, 'r', encoding='gbk') as file:
         rows_csv = csv.reader(file)
         for row in rows_csv:
@@ -23,7 +23,7 @@ def update_csv(filename, directory):
                 length = str(len(os.listdir(folder_path)))
                 print(row[0] + ',' + row[1] + ',' + length)
             else:
-                print(row[0] + ',' + row[1] + ',' + '0')
+                print(row[0] + ',' + row[1] + ',' + 'None')
 
 def from_csv_in_gbif(filename):
     with open(filename, encoding='gbk') as file:

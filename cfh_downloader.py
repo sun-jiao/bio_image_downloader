@@ -50,5 +50,5 @@ if __name__ == '__main__':
     butterfly.download()
 
     end = datetime.now()
-    print("aiohttp版爬虫花费时间为：")
+    print("time cost using aiohttp: ")
     print(end - start)

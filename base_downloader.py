@@ -8,17 +8,32 @@ import aiohttp
 import requests
 from fake_useragent import UserAgent
 from abc import abstractmethod,ABCMeta
+from urllib.parse import urlsplit
 
-
-async def fetch(client, url, header):
+async def fetch(client, url):
+    """
+    asyncly download image
+    ----------
+    :param client: see :func:`async_save`
+    :param url: see :func:`async_save`
+    """
     ua = UserAgent(use_cache_server=False)
-    async with client.get(url, proxy='http://127.0.0.1:8124', headers=header) as resp:
+    host_url = "{0.netloc}".format(urlsplit(url)) # get host from url automatically using urllib
+    async with client.get(url, proxy='http://127.0.0.1:8124', headers={
+            'User-Agent': ua.random,
+            'Host': host_url, }) as resp:
         return await resp.read()
 
 
-async def async_save(url, directory, header):
+async def async_save(url, directory):
+    """
+    call 'fetch' to download image and save it in specified firectory.
+    -----------
+    :param url: string, url of image to be downloaded
+    :param directory: string, path of the directory where image to be downloaded to
+    """
     async with aiohttp.ClientSession() as client:
-        image = await fetch(client, url, header)
+        image = await fetch(client, url)
         split_list = url.split('/')
         filename = split_list[len(split_list)- 1]
         if not filename.lower().endswith('.jpg'):
@@ -28,20 +43,34 @@ async def async_save(url, directory, header):
         await f.close()
 
 class BaseDownloader(metaclass=ABCMeta):
+    """
+    abstracted base downloader.
+    """
+
     photo_list_key = ''
     host = ''
 
     def __init__(self, name, directory, size = 0, page_size = 25, check = None, folder_size = 0):
-        self.name = name # species name, scientific or vernacular are both ok
+        """
+
+        :param name: string, species name, scientific or vernacular are both ok (or only one of it in some child class, such as GbifDownloader.
+        :param directory: string, path of the directory where image to be downloaded to.
+        :param size: int, total amount of images to be downloaded, 0 means as much as the website has.
+        :param page_size: int, the number of images in a page,
+                            too large size may take a long time to download all images of it, too small size will cause multiple requests.
+        :param check: boolean, name check, None: DO NOT check; True: scientific name; False: chinese vernacular name.
+        :param folder_size: int, maximum number of pictures in the folder, download will be interrupted after reaching it.
+        """
+        self.name = name
         self.directory = './download/' + directory
         self.size = size
-        self.downloaded = 0
-        self.ua = UserAgent(use_cache_server=False)
-        self.id = None
         self.page_size = page_size
-        self.check = check # name check, None: DO NOT check; True: scientific name; False: chinese vernacular name
+        self.check = check
         self.folder_size = folder_size
 
+        self.downloaded = 0  # amount of images that already downloaded
+        self.ua = UserAgent(use_cache_server=False)  # from fake_useragent to generate random Useragent
+        self.id = None  # id of the species in this website
         self.get_species_id()
 
     @abstractmethod
@@ -117,7 +146,7 @@ class BaseDownloader(metaclass=ABCMeta):
                     break
 
             loop = asyncio.get_event_loop()
-            tasks = [async_save(url, self.directory, self.get_header()) for url in photo_list]
+            tasks = [async_save(url, self.directory) for url in photo_list]
             if len(tasks) > 0:
                 loop.run_until_complete(asyncio.wait(tasks))
             # async download End

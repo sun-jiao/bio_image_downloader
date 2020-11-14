@@ -1,3 +1,5 @@
+# based on gbif api: https://www.gbif.org/developer/occurrence
+
 import json
 from datetime import datetime
 
@@ -37,13 +39,15 @@ class GbifDownloader(BaseDownloader):
     def get_image_list_url(self, index):
         return "https://api.gbif.org/v1/occurrence/search?taxonkey=" + str(
             self.id) + "&limit=" + str(self.page_size) + "&offset=" + str(index * self.page_size) + '&mediaType=StillImage&basisOfRecord=HUMAN_OBSERVATION'
+        # the gbif api do not use 'page' parameter, instead, it use the 'offset', results start from the No.(offset + 1) image.
 
     def get_image_url(self, json_item):
         url_list = []
-        json_list = json_item['media']
-        for media_item in json_list:
+        media_list = json_item['media']
+        for media_item in media_list:
             try:
                 url_list.append('https://api.gbif.org/v1/image/unsafe/' + str(media_item['identifier']))
+                # with the 'api.gbif.org' prefix to get thumbnail, without it to get original size
             except:
                 pass
         return url_list
@@ -56,5 +60,5 @@ if __name__ == '__main__':
     butterfly.download()
 
     end = datetime.now()
-    print("aiohttp版爬虫花费时间为：")
+    print("time cost using aiohttp: ")
     print(end - start)

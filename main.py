@@ -3,5 +3,5 @@
 import from_csv
 
 if __name__ == '__main__':
-    from_csv.from_csv_in_gbif('butt.csv')
+    from_csv.update_csv('butt.csv')
 
