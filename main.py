@@ -1,7 +1,7 @@
 #coding:utf-8
-
+import filename_fix
 import from_csv
 
 if __name__ == '__main__':
-    from_csv.update_csv('butt.csv')
+    filename_fix.fix()
 

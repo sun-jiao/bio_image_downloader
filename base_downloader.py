@@ -35,7 +35,7 @@ async def async_save(url, directory):
     async with aiohttp.ClientSession() as client:
         image = await fetch(client, url)
         split_list = url.split('/')
-        filename = split_list[len(split_list)- 1]
+        filename = split_list[len(split_list)- 1].replace('\/:*?"<>|','')
         if not filename.lower().endswith('.jpg'):
             filename = filename + '.jpg'
         f = await aiofiles.open(directory + '/' + filename , mode='wb')
