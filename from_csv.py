@@ -2,6 +2,7 @@
 
 import csv
 import os
+import shutil
 
 from cfh_downloader import CfhDownloader
 from gbif_downloader import GbifDownloader
@@ -14,7 +15,7 @@ def from_csv_in_cfh(filename):
             butterfly = CfhDownloader(name=row[0], directory=row[1], check=False)
             butterfly.download()
 
-def update_csv(filename, new_csv, directory = './download/'):
+def update_csv(filename, new_csv, directory = './data/train/'):
     new_csv_file = open(new_csv, 'a', encoding='gbk')
     with open(filename, 'r', encoding='gbk') as file:
         rows_csv = csv.reader(file)
@@ -32,3 +33,19 @@ def from_csv_in_gbif(filename):
         for row in f_csv:
             butterfly = GbifDownloader(name=row[1], directory=row[1], check=True, size=200)
             butterfly.download()
+
+def from_csv_move_file(filename):
+    with open(filename, encoding='gbk') as file:
+        f_csv = csv.reader(file)
+        for row in f_csv:
+            source_dir = './download/' + row[1]
+            target_dir = './data/train/' + row[2]
+
+            if os.path.exists(source_dir):
+                file_names = os.listdir(source_dir)
+
+                if (len(file_names) > 0) and (not os.path.exists(target_dir)):
+                    os.makedirs(target_dir)
+
+                for file_name in file_names:
+                    shutil.move(os.path.join(source_dir, file_name), os.path.join(target_dir, file_name))

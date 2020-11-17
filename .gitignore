@@ -126,3 +126,4 @@ dmypy.json
 
 # data directory, which may assigned with copyright
 download/*
+data/*

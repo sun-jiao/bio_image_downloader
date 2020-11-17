@@ -4,11 +4,12 @@ import from_csv
 
 if __name__ == '__main__':
     print('Please choose an operation\r\n'
-              '[C]FH image download according to the csv file.\r\n'
-              '[G]BIF image download according to the csv file.\r\n'
-              '[U]pdate csv file with the number of images.\r\n'
-              '[T]rain the model.\r\n'
-              'E[X]IT.')
+          '[C]FH image download according to the csv file.\r\n'
+          '[G]BIF image download according to the csv file.\r\n'
+          '[U]pdate csv file with the number of images.\r\n'
+          '[T]rain the model.\r\n'
+          '[M]ove files according to the csv file.\r\n'
+          'E[X]IT.')
     while True:
         user_input = input('Press enter to end input: ')
         if user_input == 'C':
@@ -21,5 +22,7 @@ if __name__ == '__main__':
             print('not supported yet.')
         elif user_input == 'X':
             break
+        elif user_input == 'M':
+            from_csv.from_csv_move_file('mv_files.csv')
         else:
             print('Illegal input.')
