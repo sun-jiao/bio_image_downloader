@@ -32,15 +32,20 @@ async def async_save(url, directory):
     :param url: string, url of image to be downloaded
     :param directory: string, path of the directory where image to be downloaded to
     """
-    async with aiohttp.ClientSession() as client:
-        image = await fetch(client, url)
-        split_list = url.split('/')
-        filename = split_list[len(split_list)- 1].replace('\/:*?"<>|','')
-        if not filename.lower().endswith('.jpg'):
-            filename = filename + '.jpg'
-        f = await aiofiles.open(directory + '/' + filename , mode='wb')
-        await f.write(image)
-        await f.close()
+    split_list = url.split('/')
+    filename = split_list[len(split_list) - 1]
+    for ch in ['\\', '/', ':', '*', '?', '"', '<', '>', '|']:
+        filename = filename.replace(ch, '')
+    if not filename.lower().endswith('.jpg'):
+        filename = filename + '.jpg'
+    file_fir = directory + '/' + filename
+
+    if not os.path.exists(file_fir):
+        async with aiohttp.ClientSession() as client:
+            image = await fetch(client, url)
+            f = await aiofiles.open(file_fir , mode='wb')
+            await f.write(image)
+            await f.close()
 
 class BaseDownloader(metaclass=ABCMeta):
     """
@@ -50,7 +55,7 @@ class BaseDownloader(metaclass=ABCMeta):
     photo_list_key = ''
     host = ''
 
-    def __init__(self, name, directory, size = 0, page_size = 25, check = None, folder_size = 0):
+    def __init__(self, name, directory, size = 0, page_size = 25, check = None, folder_size = 0, base_directory = './download/'):
         """
 
         :param name: string, species name, scientific or vernacular are both ok (or only one of it in some child class, such as GbifDownloader.
@@ -62,7 +67,7 @@ class BaseDownloader(metaclass=ABCMeta):
         :param folder_size: int, maximum number of pictures in the folder, download will be interrupted after reaching it.
         """
         self.name = name
-        self.directory = './download/' + directory
+        self.directory = base_directory + directory
         self.size = size
         self.page_size = page_size
         self.check = check

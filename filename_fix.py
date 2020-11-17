@@ -2,7 +2,7 @@ import os
 
 
 def fix():
-    download = './download/'
+    download = './data/train/'
     folder_list = os.listdir(download)
     count = 0
     for folder in folder_list:

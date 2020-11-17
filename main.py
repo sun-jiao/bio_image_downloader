@@ -9,20 +9,23 @@ if __name__ == '__main__':
           '[U]pdate csv file with the number of images.\r\n'
           '[T]rain the model.\r\n'
           '[M]ove files according to the csv file.\r\n'
+          '[F]ix file name illegal character.\r\n'
           'E[X]IT.')
     while True:
         user_input = input('Press enter to end input: ')
         if user_input == 'C':
-            from_csv.from_csv_in_cfh('butt.csv')
+            from_csv.from_csv_in_cfh('labels.csv')
         elif user_input == 'G':
-            from_csv.from_csv_in_gbif('butt.csv')
+            from_csv.from_csv_in_gbif('labels.csv')
         elif user_input == 'U':
-            from_csv.update_csv('butt.csv', 'new_csv.csv')
+            from_csv.update_csv('labels.csv', 'new_csv.csv')
         elif user_input == 'T':
             print('not supported yet.')
         elif user_input == 'X':
             break
         elif user_input == 'M':
             from_csv.from_csv_move_file('mv_files.csv')
+        elif user_input == 'F':
+            filename_fix.fix()
         else:
             print('Illegal input.')
