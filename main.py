@@ -1,4 +1,5 @@
 #coding:utf-8
+import dataset_split
 import filename_fix
 import from_csv
 
@@ -10,6 +11,7 @@ if __name__ == '__main__':
           '[T]rain the model.\r\n'
           '[M]ove files according to the csv file.\r\n'
           '[F]ix file name illegal character.\r\n'
+          '[S]plit dataset.\r\n'
           'E[X]IT.')
     while True:
         user_input = input('Press enter to end input: ')
@@ -27,5 +29,7 @@ if __name__ == '__main__':
             from_csv.from_csv_move_file('mv_files.csv')
         elif user_input == 'F':
             filename_fix.fix()
+        elif user_input == 'S':
+            dataset_split.split()
         else:
             print('Illegal input.')
