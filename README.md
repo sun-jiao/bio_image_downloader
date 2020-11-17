@@ -5,4 +5,5 @@ chris3will/Python-Javascript/CFH图片库.py/: https://github.com/chris3will/Pyt
 http://www.ityouknow.com/python/2019/12/28/python-aiohttp-102.html
 https://stackoverflow.com/questions/35388332/how-to-download-images-with-aiohttp
 https://gist.github.com/hay/665734/6262e8a3c02af714f07a518a8f3eac2bbc12f862
-goldsmith/Wikipedia: https://github.com/goldsmith/Wikipedia
+/* goldsmith/Wikipedia: https://github.com/goldsmith/Wikipedia */
+https://pytorch.org/tutorials/intermediate/quantized_transfer_learning_tutorial.html#beta-quantized-transfer-learning-for-computer-vision-tutorial
