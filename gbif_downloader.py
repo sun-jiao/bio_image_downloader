@@ -1,6 +1,7 @@
 # based on gbif api: https://www.gbif.org/developer/occurrence
 
 import json
+import os
 from datetime import datetime
 
 import requests
@@ -11,6 +12,8 @@ from base_downloader import BaseDownloader
 class GbifDownloader(BaseDownloader):
     photo_list_key = 'results'
     host = 'api.gbif.org'
+
+    first_only = False
 
     def get_species_id(self):
         id_query_url = 'https://api.gbif.org/v1/species?name=' + self.name
@@ -30,6 +33,8 @@ class GbifDownloader(BaseDownloader):
                             self.id) + "&limit=1&offset=0&mediaType=StillImage&basisOfRecord=HUMAN_OBSERVATION"
                         image_list = requests.get(image_list_url, headers=self.get_header())
                         server_size = json.loads(image_list.text)['count']
+                        if self.size < server_size and self.folder_size - len(os.listdir(self.directory)) <  server_size:
+                            self.first_only = True
                         if self.size <= 0 or self.size >= server_size:
                             self.size = server_size
                         break
@@ -48,6 +53,8 @@ class GbifDownloader(BaseDownloader):
             try:
                 url_list.append('https://api.gbif.org/v1/image/unsafe/' + str(media_item['identifier']))
                 # with the 'api.gbif.org' prefix to get thumbnail, without it to get original size
+                if self.first_only:
+                    break
             except:
                 pass
         return url_list
@@ -56,7 +63,7 @@ class GbifDownloader(BaseDownloader):
 if __name__ == '__main__':
     start = datetime.now()
 
-    butterfly = GbifDownloader(name="Hestina nama", directory="Hestina nama test", page_size= 25, check=False)
+    butterfly = GbifDownloader(name="Speyeria", directory="Speyeria", page_size= 25, check=True, folder_size=2000, base_directory='./data/train/')
     butterfly.download()
 
     end = datetime.now()

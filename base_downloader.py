@@ -65,6 +65,7 @@ class BaseDownloader(metaclass=ABCMeta):
                             too large size may take a long time to download all images of it, too small size will cause multiple requests.
         :param check: boolean, name check, None: DO NOT check; True: scientific name; False: chinese vernacular name.
         :param folder_size: int, maximum number of pictures in the folder, download will be interrupted after reaching it.
+        :parameter base_directory : parent folder of the directory.
         """
         self.name = name
         self.directory = base_directory + directory
