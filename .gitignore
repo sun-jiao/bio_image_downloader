@@ -128,3 +128,5 @@ dmypy.json
 download/*
 data/*
 hymenoptera_data/*
+models/*
+predict/*
