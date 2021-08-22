@@ -33,7 +33,7 @@ class GbifDownloader(BaseDownloader):
                             self.id) + "&limit=1&offset=0&mediaType=StillImage&basisOfRecord=HUMAN_OBSERVATION"
                         image_list = requests.get(image_list_url, headers=self.get_header())
                         server_size = json.loads(image_list.text)['count']
-                        if self.size < server_size and self.folder_size - len(os.listdir(self.directory)) <  server_size:
+                        if self.size < server_size and self.folder_size - len(os.listdir(self.directory)) < server_size:
                             self.first_only = True
                         if self.size <= 0 or self.size >= server_size:
                             self.size = server_size
@@ -43,7 +43,8 @@ class GbifDownloader(BaseDownloader):
 
     def get_image_list_url(self, index):
         return "https://api.gbif.org/v1/occurrence/search?taxonkey=" + str(
-            self.id) + "&limit=" + str(self.page_size) + "&offset=" + str(index * self.page_size) + '&mediaType=StillImage&basisOfRecord=HUMAN_OBSERVATION'
+            self.id) + "&limit=" + str(self.page_size) + "&offset=" + str(
+            index * self.page_size) + '&mediaType=StillImage&basisOfRecord=HUMAN_OBSERVATION'
         # the gbif api do not use 'page' parameter, instead, it use the 'offset', results start from the No.(offset + 1) image.
 
     def get_image_url(self, json_item):
@@ -59,13 +60,15 @@ class GbifDownloader(BaseDownloader):
                 pass
         return url_list
 
+
 # test:
 if __name__ == '__main__':
     start = datetime.now()
 
-    butterfly = GbifDownloader(name="Speyeria", directory="Speyeria", page_size= 25, check=True, folder_size=2000, base_directory='./data/train/')
+    butterfly = GbifDownloader(name="Speyeria", directory="Speyeria", page_size=25, check=True, folder_size=2000,
+                               base_directory='./data/train/')
     butterfly.download()
 
     end = datetime.now()
-    print("time cost using aiohttp: ")
+    print("time cost: ")
     print(end - start)

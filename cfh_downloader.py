@@ -36,19 +36,20 @@ class CfhDownloader(BaseDownloader, ABC):
 
     def get_image_list_url(self, index):
         return "http://www.cfh.ac.cn/AjaxServer/Server.ashx?service=photoset&method=get&spid=" + str(
-                self.id) + "&pagesize=" + str(self.page_size) + "&page=" + str(index + 1)
+            self.id) + "&pagesize=" + str(self.page_size) + "&page=" + str(index + 1)
 
     def get_image_url(self, json_item):
         return ['http://www.cfh.ac.cn' + \
-               str(json_item['thumbnail']).replace('Thumbnail', 'Normal')]
+                str(json_item['thumbnail']).replace('Thumbnail', 'Normal')]
+
 
 # test:
 if __name__ == '__main__':
     start = datetime.now()
 
-    butterfly = CfhDownloader(name="金裳凤蝶", directory="Troides aeacus test", page_size= 25, check=False)
+    butterfly = CfhDownloader(name="金裳凤蝶", directory="Troides aeacus test", page_size=25, check=False)
     butterfly.download()
 
     end = datetime.now()
-    print("time cost using aiohttp: ")
+    print("time cost: ")
     print(end - start)

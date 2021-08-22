@@ -7,8 +7,9 @@ import aiofiles
 import aiohttp
 import requests
 from fake_useragent import UserAgent
-from abc import abstractmethod,ABCMeta
+from abc import abstractmethod, ABCMeta
 from urllib.parse import urlsplit
+
 
 async def fetch(client, url):
     """
@@ -18,10 +19,10 @@ async def fetch(client, url):
     :param url: see :func:`async_save`
     """
     ua = UserAgent(use_cache_server=False)
-    host_url = "{0.netloc}".format(urlsplit(url)) # get host from url automatically using urllib
+    host_url = "{0.netloc}".format(urlsplit(url))  # get host from url automatically using urllib
     async with client.get(url, proxy='http://127.0.0.1:8124', headers={
-            'User-Agent': ua.random,
-            'Host': host_url, }) as resp:
+        'User-Agent': ua.random,
+        'Host': host_url, }) as resp:
         return await resp.read()
 
 
@@ -43,9 +44,10 @@ async def async_save(url, directory):
     if not os.path.exists(file_fir):
         async with aiohttp.ClientSession() as client:
             image = await fetch(client, url)
-            f = await aiofiles.open(file_fir , mode='wb')
+            f = await aiofiles.open(file_fir, mode='wb')
             await f.write(image)
             await f.close()
+
 
 class BaseDownloader(metaclass=ABCMeta):
     """
@@ -55,7 +57,7 @@ class BaseDownloader(metaclass=ABCMeta):
     photo_list_key = ''
     host = ''
 
-    def __init__(self, name, directory, size = 0, page_size = 25, check = None, folder_size = 0, base_directory = './download/'):
+    def __init__(self, name, directory, size=0, page_size=25, check=None, folder_size=0, base_directory='./download/'):
         """
 
         :param name: string, species name, scientific or vernacular are both ok (or only one of it in some child class, such as GbifDownloader.
@@ -80,13 +82,16 @@ class BaseDownloader(metaclass=ABCMeta):
         self.get_species_id()
 
     @abstractmethod
-    def get_species_id(self):pass
+    def get_species_id(self):
+        pass
 
     @abstractmethod
-    def get_image_list_url(self, index):pass
+    def get_image_list_url(self, index):
+        pass
 
     @abstractmethod
-    def get_image_url(self, json_item):pass
+    def get_image_url(self, json_item):
+        pass
 
     def get_header(self):
         return {
@@ -100,7 +105,7 @@ class BaseDownloader(metaclass=ABCMeta):
         else:
             print("Start downloading for " + self.name + " to " + self.directory)
 
-        for index in range(math.ceil(self.size/self.page_size)):
+        for index in range(math.ceil(self.size / self.page_size)):
             image_list_url = self.get_image_list_url(index)
             image_list = requests.get(image_list_url, headers=self.get_header())
 
@@ -121,7 +126,7 @@ class BaseDownloader(metaclass=ABCMeta):
 
             for jndex in range(self.page_size):
                 img_url = self.get_image_url(data[jndex])
-                print('Downloading ' + str(self.downloaded + 1) + '/' + str(self.size) +': ' + str(img_url))
+                print('Downloading ' + str(self.downloaded + 1) + '/' + str(self.size) + ': ' + str(img_url))
 
                 # sync download Start
                 '''
