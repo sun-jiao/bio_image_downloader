@@ -42,7 +42,7 @@ def imshow(inp, title=None):
     plt.pause(0.001)  # pause a bit so that plots are updated
 
 
-def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
+def train_model(model, criterion, optimizer, scheduler, num_epochs: int = 25):
     since = time.time()
 
     best_model_wts = copy.deepcopy(model.state_dict())
@@ -111,7 +111,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
     return model
 
 
-def visualize_model(model, num_images=6):
+def visualize_model(model: nn.Module, num_images: int = 6):
     was_training = model.training
     model.eval()
     images_so_far = 0
@@ -136,6 +136,37 @@ def visualize_model(model, num_images=6):
                     model.train(mode=was_training)
                     return
         model.train(mode=was_training)
+
+
+def get_model(models_dir: str, name: str, nclass: int) -> nn.Module:
+    idx = 0
+    while os.path.exists(os.path.join(models_dir, '%s_%d.pth' % (name, idx))):
+        idx = idx + 1
+    else:
+        if idx > 0:
+            model = models.resnet18()
+            # model.fc = nn.Linear(model.fc.in_features, len(class_names))
+
+            model.load_state_dict(torch.load(os.path.join(models_dir, '%s_%d.pth' % (name, (idx - 1)))))
+            model.to(device)
+            model.eval()
+            print('Loading model %d.' % (idx - 1))
+        else:
+            model = models.resnet18(pretrained=True)
+            model.fc = nn.Linear(model.fc.in_features, nclass)
+            # Here the size of each output sample is set to 2.
+            # Alternatively, it can be generalized to nn.Linear(num_ftrs, len(class_names)).
+            model = model.to(device)
+    return model
+
+
+def save_model(model: nn.Module, models_dir: str, name: str):
+    # Save model
+    idx = 0
+    while os.path.exists(os.path.join(models_dir, '%s_%d.pth' % (name, idx))):
+        idx = idx + 1
+    else:
+        torch.save(model.state_dict(), os.path.join(models_dir, '%s_%d.pth' % (name, idx)))
 
 
 if __name__ == '__main__':
@@ -182,29 +213,12 @@ if __name__ == '__main__':
 
     imshow(out, title=[class_names[x] for x in classes])
 
-    idx = 0
-    while os.path.exists(os.path.join(models_dir, 'model_%d.pth' % idx)):
-        idx = idx + 1
-    else:
-        if idx > 0:
-            model = models.resnet18()
-            model.fc = nn.Linear(model.fc.in_features, len(class_names))
-
-            model.load_state_dict(torch.load(os.path.join(models_dir, 'model_%d.pth' % (idx - 1))))
-            model.to(device)
-            model.eval()
-            print('Loading model %d.' % (idx - 1))
-        else:
-            model = models.resnet18(pretrained=True)
-            model.fc = nn.Linear(model.fc.in_features, len(class_names))
-            # Here the size of each output sample is set to 2.
-            # Alternatively, it can be generalized to nn.Linear(num_ftrs, len(class_names)).
-            model = model.to(device)
+    model = get_model(models_dir, 'model', len(class_names))
 
     criterion = nn.CrossEntropyLoss()
 
     # Observe that all parameters are being optimized
-    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+    optimizer = optim.Adadelta(model.parameters(), lr=0.01)
 
     # Decay LR by a factor of 0.1 every 7 epochs
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
@@ -213,13 +227,8 @@ if __name__ == '__main__':
     # It should take around 15-25 min on CPU. On GPU though, it takes less than a minute.
 
     model = train_model(model, criterion, optimizer, exp_lr_scheduler,
-                        num_epochs=0)
+                        num_epochs=1)
 
-    # Save model
-    idx = 0
-    while os.path.exists(os.path.join(models_dir, 'model_%d.pth' % idx)):
-        idx = idx + 1
-    else:
-        torch.save(model.state_dict(), os.path.join(models_dir, 'model_%d.pth' % idx))
+    save_model(model, models_dir, 'model')
 
     visualize_model(model)
