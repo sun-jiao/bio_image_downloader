@@ -33,6 +33,8 @@ def get_rank_level(strs0, strs1, str2) -> (int, str, str):
         return 4, '', strs1
     elif strs0.endswith('蝶'):
         return 6, strs0, strs1 + ' ' + str2
+    elif strs0.endswith('组'):
+        pass
     else:
         return 6, '', strs0 + ' ' + strs1
 
