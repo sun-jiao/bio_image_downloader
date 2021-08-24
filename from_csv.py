@@ -1,4 +1,4 @@
-#coding:utf-8
+# coding:utf-8
 
 import csv
 import os
@@ -15,7 +15,8 @@ def from_csv_in_cfh(filename):
             butterfly = CfhDownloader(name=row[0], directory=row[2], check=False, base_directory='./data/train/')
             butterfly.download()
 
-def update_csv(filename, new_csv, directory = './data/train/'):
+
+def update_csv(filename, new_csv, directory='./data/train/'):
     new_csv_file = open(new_csv, 'a', encoding='gbk')
     with open(filename, 'r', encoding='gbk') as file:
         rows_csv = csv.reader(file)
@@ -27,12 +28,15 @@ def update_csv(filename, new_csv, directory = './data/train/'):
             else:
                 new_csv_file.write(row[0] + ',' + row[1] + ',' + '0' + '\r\n')
 
+
 def from_csv_in_gbif(filename):
     with open(filename, encoding='gbk') as file:
         f_csv = csv.reader(file)
         for row in f_csv:
-            butterfly = GbifDownloader(name=row[1], directory=row[2], check=True, folder_size=2000, base_directory='./data/train/')
+            butterfly = GbifDownloader(name=row[1], directory=row[2], check=True, folder_size=2000,
+                                       base_directory='./data/train/')
             butterfly.download()
+
 
 def from_csv_move_file(filename):
     with open(filename, encoding='gbk') as file:
@@ -49,3 +53,4 @@ def from_csv_move_file(filename):
 
                 for file_name in file_names:
                     shutil.move(os.path.join(source_dir, file_name), os.path.join(target_dir, file_name))
+
