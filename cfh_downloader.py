@@ -1,6 +1,7 @@
 import json
 from abc import ABC
 from datetime import datetime
+from json import JSONDecodeError
 
 import requests
 
@@ -15,7 +16,11 @@ class CfhDownloader(BaseDownloader, ABC):
         id_query_url = 'http://www.cfh.ac.cn/ajaxserver/speciesserv.ashx?action=spsearchzh&keyword=' + self.name
 
         species_data = requests.get(id_query_url, headers=self.get_header())
-        species_json = json.loads(species_data.text)
+        try:
+            species_json = json.loads(species_data.text)
+        except JSONDecodeError:
+            print(species_data.text)
+            return
 
         if len(species_json) > 0:
             position_in_json = 0

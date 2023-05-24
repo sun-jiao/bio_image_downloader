@@ -33,6 +33,10 @@ class GbifDownloader(BaseDownloader):
                             self.id) + "&limit=1&offset=0&mediaType=StillImage&basisOfRecord=HUMAN_OBSERVATION"
                         image_list = requests.get(image_list_url, headers=self.get_header())
                         server_size = json.loads(image_list.text)['count']
+
+                        if not os.path.exists(self.directory):
+                            os.makedirs(self.directory)
+
                         if self.size < server_size and self.folder_size - len(os.listdir(self.directory)) < server_size:
                             self.first_only = True
                         if self.size <= 0 or self.size >= server_size:

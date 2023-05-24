@@ -4,9 +4,10 @@ from datetime import datetime
 
 from fake_useragent import UserAgent
 
+
 async def fetch(client):
-    ua = UserAgent(use_cache_server=False)
-    async with client.get('https://www.checkip.org/', proxy='http://127.0.0.1:8124', headers={
+    ua = UserAgent()
+    async with client.get('https://www.checkip.org/', proxy='http://127.0.0.1:7890', headers={
         'User-Agent': ua.random,
         'Host': 'www.checkip.org', }) as resp:
         assert resp.status == 200
@@ -17,6 +18,7 @@ async def main():
     async with aiohttp.ClientSession() as client:
         html = await fetch(client)
         print(html)
+
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()

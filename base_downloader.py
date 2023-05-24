@@ -2,6 +2,7 @@ import asyncio
 import json
 import math
 import os
+from json import JSONDecodeError
 
 import aiofiles
 import aiohttp
@@ -18,9 +19,9 @@ async def fetch(client, url):
     :param client: see :func:`async_save`
     :param url: see :func:`async_save`
     """
-    ua = UserAgent(use_cache_server=False)
+    ua = UserAgent()
     host_url = "{0.netloc}".format(urlsplit(url))  # get host from url automatically using urllib
-    async with client.get(url, proxy='http://127.0.0.1:8124', headers={
+    async with client.get(url, proxy='http://127.0.0.1:7890', headers={
         'User-Agent': ua.random,
         'Host': host_url, }) as resp:
         return await resp.read()
@@ -60,14 +61,14 @@ class BaseDownloader(metaclass=ABCMeta):
     def __init__(self, name, directory, size=0, page_size=25, check=None, folder_size=0, base_directory='./download/'):
         """
 
-        :param name: string, species name, scientific or vernacular are both ok (or only one of it in some child class, such as GbifDownloader.
-        :param directory: string, path of the directory where image to be downloaded to.
-        :param size: int, total amount of images to be downloaded, 0 means as much as the website has.
-        :param page_size: int, the number of images in a page,
-                            too large size may take a long time to download all images of it, too small size will cause multiple requests.
-        :param check: boolean, name check, None: DO NOT check; True: scientific name; False: chinese vernacular name.
-        :param folder_size: int, maximum number of pictures in the folder, download will be interrupted after reaching it.
-        :parameter base_directory : parent folder of the directory.
+        :param name: string, species name, scientific or vernacular are both ok (or only one of it in some child
+        class, such as GbifDownloader. :param directory: string, path of the directory where image to be downloaded
+        to. :param size: int, total amount of images to be downloaded, 0 means as much as the website has. :param
+        page_size: int, the number of images in a page, too large size may take a long time to download all images of
+        it, too small size will cause multiple requests. :param check: boolean, name check, None: DO NOT check; True:
+        scientific name; False: chinese vernacular name. :param folder_size: int, maximum number of pictures in the
+        folder, download will be interrupted after reaching it. :parameter base_directory : parent folder of the
+        directory.
         """
         self.name = name
         self.directory = base_directory + directory
@@ -77,7 +78,7 @@ class BaseDownloader(metaclass=ABCMeta):
         self.folder_size = folder_size
 
         self.downloaded = 0  # amount of images that already downloaded
-        self.ua = UserAgent(use_cache_server=False)  # from fake_useragent to generate random Useragent
+        self.ua = UserAgent()  # from fake_useragent to generate random Useragent
         self.id = None  # id of the species in this website
         self.get_species_id()
 
@@ -113,6 +114,9 @@ class BaseDownloader(metaclass=ABCMeta):
                 data = json.loads(image_list.text)[self.photo_list_key]
             except KeyError:
                 break
+            except JSONDecodeError:
+                print(f'image_list:{image_list.text}[{self.photo_list_key}]')
+                break
 
             # download links in this page.
             if not os.path.exists(self.directory):
@@ -124,7 +128,7 @@ class BaseDownloader(metaclass=ABCMeta):
                 print('folder size meet,', end=' ')
                 break
 
-            for jndex in range(self.page_size):
+            for jndex in range(len(data)):
                 img_url = self.get_image_url(data[jndex])
                 print('Downloading ' + str(self.downloaded + 1) + '/' + str(self.size) + ': ' + str(img_url))
 
@@ -157,7 +161,7 @@ class BaseDownloader(metaclass=ABCMeta):
                     break
 
             loop = asyncio.get_event_loop()
-            tasks = [async_save(url, self.directory) for url in photo_list]
+            tasks = [loop.create_task(async_save(url, self.directory)) for url in photo_list]
             if len(tasks) > 0:
                 loop.run_until_complete(asyncio.wait(tasks))
             # async download End
