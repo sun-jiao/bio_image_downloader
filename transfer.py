@@ -24,6 +24,7 @@ import torch.utils.data
 import torchvision
 from torch.optim import lr_scheduler
 from torchvision import datasets, models, transforms
+from torchvision.models import ResNet18_Weights
 
 
 # License: BSD
@@ -152,7 +153,7 @@ def get_model(_models_dir: str, name: str, nclass: int) -> nn.Module:
             _model.eval()
             print('Loading model %d.' % (idx - 1))
         else:
-            _model = models.resnet18(pretrained=True)
+            _model = models.resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
             _model.fc = nn.Linear(_model.fc.in_features, nclass)
             # Here the size of each output sample is set to 2.
             # Alternatively, it can be generalized to nn.Linear(num_ftrs, len(class_names)).
