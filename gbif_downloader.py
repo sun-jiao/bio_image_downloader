@@ -3,6 +3,8 @@
 import json
 import os
 from datetime import datetime
+from json import JSONDecodeError
+from ssl import SSLError
 
 import requests
 
@@ -18,8 +20,13 @@ class GbifDownloader(BaseDownloader):
     def get_species_id(self):
         id_query_url = 'https://api.gbif.org/v1/species?name=' + self.name
 
-        species_data = requests.get(id_query_url, headers=self.get_header())
-        species_json = json.loads(species_data.text)
+        while True:
+            try:
+                species_data = requests.get(id_query_url, headers=self.get_header())
+                species_json = json.loads(species_data.text)
+                break
+            except SSLError or ConnectionError or JSONDecodeError:  # Try to catch something more specific
+                pass
 
         if len(species_json) > 0:
             if self.check is not None:
@@ -36,10 +43,9 @@ class GbifDownloader(BaseDownloader):
                         image_list = requests.get(image_list_url, headers=self.get_header())
                         server_size = json.loads(image_list.text)['count']
 
-                        if not os.path.exists(self.directory):
-                            os.makedirs(self.directory)
-
-                        if self.size < server_size and self.folder_size - len(os.listdir(self.directory)) < server_size:
+                        if not os.path.exists(self.directory) or \
+                                (self.size < server_size and
+                                 self.folder_size - len(os.listdir(self.directory)) < server_size):
                             self.first_only = True
                         if self.size <= 0 or self.size >= server_size:
                             self.size = server_size

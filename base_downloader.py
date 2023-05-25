@@ -26,21 +26,15 @@ async def fetch(client, url):
     host_url = "{0.netloc}".format(urlsplit(url))  # get host from url automatically using urllib
     while True:
         try:
-            async with client.get(url, proxy='http://127.0.0.1:7890', headers={
+            resp = await client.get(url, proxy='http://127.0.0.1:7890', headers={
                 'User-Agent': ua.random,
-                'Host': host_url, }) as resp:
-                return await resp.read()
+                'Host': host_url, })
+            return await resp.read()
         except SSLError or ClientConnectorError:  # Try to catch something more specific
             pass
 
 
-async def async_save(url, directory):
-    """
-    call 'fetch' to download image and save it in specified firectory.
-    -----------
-    :param url: string, url of image to be downloaded
-    :param directory: string, path of the directory where image to be downloaded to
-    """
+def get_filename(url):
     split_list = url.split('/')
     filename = split_list[len(split_list) - 1]
     split_list0 = filename.split('=')
@@ -58,7 +52,18 @@ async def async_save(url, directory):
     else:
         filename_main = file_suf_list[0]
 
-    filename = f'{filename_main}.{file_suf}'
+    return f'{filename_main}.{file_suf}'
+
+
+async def async_save(url, directory):
+    """
+    call 'fetch' to download image and save it in specified firectory.
+    -----------
+    :param url: string, url of image to be downloaded
+    :param directory: string, path of the directory where image to be downloaded to
+    """
+
+    filename = get_filename(url)
 
     file_dir = directory + '/' + filename
 

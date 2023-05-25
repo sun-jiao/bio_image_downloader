@@ -2,6 +2,7 @@ import json
 from abc import ABC
 from datetime import datetime
 from json import JSONDecodeError
+from ssl import SSLError
 
 import requests
 
@@ -13,14 +14,19 @@ class CfhDownloader(BaseDownloader, ABC):
     host = 'www.cfh.ac.cn'
 
     def get_species_id(self):
-        id_query_url = 'http://www.cfh.ac.cn/ajaxserver/speciesserv.ashx?action=spsearchzh&keyword=' + self.name
+        id_query_url = f'https://www.cfh.ac.cn/ajaxserver/speciesserv.ashx?action=spsearchla&keywords="{self.name}"'
 
-        species_data = requests.get(id_query_url, headers=self.get_header())
-        try:
-            species_json = json.loads(species_data.text)
-        except JSONDecodeError:
-            print(species_data.text)
-            return
+        while True:
+            try:
+                species_data = requests.get(id_query_url, headers=self.get_header())
+                species_json = json.loads(species_data.text)
+                if 'Table' not in species_json:
+                    self.size = 0
+                    return
+                species_json = species_json['Table']
+                break
+            except SSLError or ConnectionError or JSONDecodeError:  # Try to catch something more specific
+                pass
 
         if len(species_json) > 0:
             position_in_json = 0

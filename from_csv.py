@@ -12,21 +12,21 @@ def from_csv_in_cfh(filename):
     with open(filename, encoding='utf-8') as file:
         f_csv = csv.reader(file)
         for row in f_csv:
-            butterfly = CfhDownloader(name=row[0], directory=row[2], check=False, base_directory='./data/train/')
+            butterfly = CfhDownloader(name=row[1], directory=row[2], check=True, base_directory='./data/train/')
             butterfly.download()
 
 
 def update_csv(filename, new_csv, directory='./data/train/'):
-    new_csv_file = open(new_csv, 'a', encoding='gbk')
-    with open(filename, 'r', encoding='gbk') as file:
+    new_csv_file = open(new_csv, 'a', encoding='utf-8')
+    with open(filename, 'r', encoding='utf-8') as file:
         rows_csv = csv.reader(file)
         for row in rows_csv:
-            folder_path = directory + row[1]
+            folder_path = directory + row[2]
             if os.path.isdir(folder_path):
                 length = str(len(os.listdir(folder_path)))
-                new_csv_file.write(row[0] + ',' + row[1] + ',' + length + '\r\n')
+                new_csv_file.write(row[0] + ',' + row[2] + ',' + length + '\r\n')
             else:
-                new_csv_file.write(row[0] + ',' + row[1] + ',' + '0' + '\r\n')
+                new_csv_file.write(row[0] + ',' + row[2] + ',' + '0' + '\r\n')
 
 
 def from_csv_in_gbif(filename):

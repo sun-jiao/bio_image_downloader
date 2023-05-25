@@ -42,10 +42,10 @@ def imshow(inp, title=None):
     plt.pause(0.001)  # pause a bit so that plots are updated
 
 
-def train_model(model, criterion, optimizer, scheduler, num_epochs: int = 25):
+def train_model(_model, _criterion, _optimizer, scheduler, num_epochs: int = 25):
     since = time.time()
 
-    best_model_wts = copy.deepcopy(model.state_dict())
+    best_model_wts = copy.deepcopy(_model.state_dict())
     best_acc = 0.0
 
     for epoch in range(num_epochs):
@@ -55,41 +55,41 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs: int = 25):
         # Each epoch has a training and validation phase
         for phase in ['train', 'val']:
             if phase == 'train':
-                model.train()  # Set model to training mode
+                _model.train()  # Set model to training mode
             else:
-                model.eval()  # Set model to evaluate mode
+                _model.eval()  # Set model to evaluate mode
 
             running_loss = 0.0
             running_corrects = 0
 
             # Iterate over data.
-            for inputs, labels in dataloaders[phase]:
-                inputs = inputs.to(device)
+            for _inputs, labels in dataloaders[phase]:
+                _inputs = _inputs.to(device)
                 labels = labels.to(device)
 
                 # zero the parameter gradients
-                optimizer.zero_grad()
+                _optimizer.zero_grad()
 
                 # forward
                 # track history if only in train
                 with torch.set_grad_enabled(phase == 'train'):
-                    outputs = model(inputs)
+                    outputs = _model(_inputs)
                     _, preds = torch.max(outputs, 1)
-                    loss = criterion(outputs, labels)
+                    loss = _criterion(outputs, labels)
 
                     # backward + optimize only if in training phase
                     if phase == 'train':
                         loss.backward()
-                        optimizer.step()
+                        _optimizer.step()
 
                 # statistics
-                running_loss += loss.item() * inputs.size(0)
-                running_corrects += torch.sum(preds == labels.data)
+                running_loss += loss.item() * _inputs.size(0)
+                running_corrects += torch.sum(input=labels.data)
             if phase == 'train':
                 scheduler.step()
 
             epoch_loss = running_loss / dataset_sizes[phase]
-            epoch_acc = running_corrects.double() / dataset_sizes[phase]
+            epoch_acc = float(running_corrects) / dataset_sizes[phase]
 
             print('{} Loss: {:.4f} Acc: {:.4f}'.format(
                 phase, epoch_loss, epoch_acc))
@@ -97,7 +97,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs: int = 25):
             # deep copy the model
             if phase == 'val' and epoch_acc > best_acc:
                 best_acc = epoch_acc
-                best_model_wts = copy.deepcopy(model.state_dict())
+                best_model_wts = copy.deepcopy(_model.state_dict())
 
         print()
 
@@ -107,66 +107,66 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs: int = 25):
     print('Best val Acc: {:4f}'.format(best_acc))
 
     # load best model weights
-    model.load_state_dict(best_model_wts)
-    return model
+    _model.load_state_dict(best_model_wts)
+    return _model
 
 
-def visualize_model(model: nn.Module, num_images: int = 6):
-    was_training = model.training
-    model.eval()
+def visualize_model(_model: nn.Module, num_images: int = 6):
+    was_training = _model.training
+    _model.eval()
     images_so_far = 0
     fig = plt.figure()
 
     with torch.no_grad():
-        for i, (inputs, labels) in enumerate(dataloaders['val']):
-            inputs = inputs.to(device)
+        for i, (_inputs, labels) in enumerate(dataloaders['val']):
+            _inputs = _inputs.to(device)
             labels = labels.to(device)
 
-            outputs = model(inputs)
+            outputs = _model(_inputs)
             _, preds = torch.max(outputs, 1)
 
-            for j in range(inputs.size()[0]):
+            for j in range(_inputs.size()[0]):
                 images_so_far += 1
                 ax = plt.subplot(num_images // 2, 2, images_so_far)
                 ax.axis('off')
                 ax.set_title('predicted: {}, label: {}'.format(class_names[preds[j]], class_names[labels[j]]))
-                imshow(inputs.cpu().data[j])
+                imshow(_inputs.cpu().data[j])
 
                 if images_so_far == num_images:
-                    model.train(mode=was_training)
+                    _model.train(mode=was_training)
                     return
-        model.train(mode=was_training)
+        _model.train(mode=was_training)
 
 
-def get_model(models_dir: str, name: str, nclass: int) -> nn.Module:
+def get_model(_models_dir: str, name: str, nclass: int) -> nn.Module:
     idx = 0
-    while os.path.exists(os.path.join(models_dir, '%s_%d.pth' % (name, idx))):
+    while os.path.exists(os.path.join(_models_dir, '%s_%d.pth' % (name, idx))):
         idx = idx + 1
     else:
         if idx > 0:
-            model = models.resnet18()
+            _model = models.resnet18()
             # model.fc = nn.Linear(model.fc.in_features, len(class_names))
 
-            model.load_state_dict(torch.load(os.path.join(models_dir, '%s_%d.pth' % (name, (idx - 1)))))
-            model.to(device)
-            model.eval()
+            _model.load_state_dict(torch.load(os.path.join(_models_dir, '%s_%d.pth' % (name, (idx - 1)))))
+            _model.to(device)
+            _model.eval()
             print('Loading model %d.' % (idx - 1))
         else:
-            model = models.resnet18(pretrained=True)
-            model.fc = nn.Linear(model.fc.in_features, nclass)
+            _model = models.resnet18(pretrained=True)
+            _model.fc = nn.Linear(_model.fc.in_features, nclass)
             # Here the size of each output sample is set to 2.
             # Alternatively, it can be generalized to nn.Linear(num_ftrs, len(class_names)).
-            model = model.to(device)
-    return model
+            _model = _model.to(device)
+    return _model
 
 
-def save_model(model: nn.Module, models_dir: str, name: str):
+def save_model(_model: nn.Module, _models_dir: str, name: str):
     # Save model
     idx = 0
-    while os.path.exists(os.path.join(models_dir, '%s_%d.pth' % (name, idx))):
+    while os.path.exists(os.path.join(_models_dir, '%s_%d.pth' % (name, idx))):
         idx = idx + 1
     else:
-        torch.save(model.state_dict(), os.path.join(models_dir, '%s_%d.pth' % (name, idx)))
+        torch.save(_model.state_dict(), os.path.join(_models_dir, '%s_%d.pth' % (name, idx)))
 
 
 if __name__ == '__main__':
