@@ -1,6 +1,6 @@
-#coding:utf-8
+# coding:utf-8
 import dataset_split
-import filename_fix
+import file_fix
 import from_csv
 
 if __name__ == '__main__':
@@ -11,6 +11,7 @@ if __name__ == '__main__':
           '[T]rain the model.\r\n'
           '[M]ove files according to the csv file.\r\n'
           '[F]ix file name illegal character.\r\n'
+          '[R]emove empty files.\r\n'
           '[S]plit dataset.\r\n'
           'E[X]IT.')
     while True:
@@ -27,8 +28,10 @@ if __name__ == '__main__':
             break
         elif user_input == 'M':
             from_csv.from_csv_move_file('mv_files.csv')
+        elif user_input == 'R':
+            file_fix.empty_file()
         elif user_input == 'F':
-            filename_fix.fix()
+            file_fix.filename()
         elif user_input == 'S':
             dataset_split.split()
         else:
