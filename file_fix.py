@@ -30,3 +30,18 @@ def empty_file(rootdir='./data/train/'):
                     os.remove(fullname)
             except WindowsError:
                 continue
+
+
+def remove_duplicate_files(path):
+    if not os.path.exists(path):
+        return
+
+    files = os.listdir(path)
+    for file in files:
+        fullpath = os.path.join(path, file)
+        if os.path.isdir(fullpath):
+            remove_duplicate_files(fullpath)
+        else:
+            lower_files = [f.lower() for f in files]
+            if lower_files.count(file.lower()) > 1:
+                os.remove(fullpath)
