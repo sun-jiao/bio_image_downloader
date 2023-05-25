@@ -7,9 +7,12 @@ from json import JSONDecodeError
 import aiofiles
 import aiohttp
 import requests
+from aiohttp import ClientConnectorError
 from fake_useragent import UserAgent
 from abc import abstractmethod, ABCMeta
 from urllib.parse import urlsplit
+
+from requests.exceptions import SSLError
 
 
 async def fetch(client, url):
@@ -21,10 +24,14 @@ async def fetch(client, url):
     """
     ua = UserAgent()
     host_url = "{0.netloc}".format(urlsplit(url))  # get host from url automatically using urllib
-    async with client.get(url, proxy='http://127.0.0.1:7890', headers={
-        'User-Agent': ua.random,
-        'Host': host_url, }) as resp:
-        return await resp.read()
+    while True:
+        try:
+            async with client.get(url, proxy='http://127.0.0.1:7890', headers={
+                'User-Agent': ua.random,
+                'Host': host_url, }) as resp:
+                return await resp.read()
+        except SSLError or ClientConnectorError:  # Try to catch something more specific
+            pass
 
 
 async def async_save(url, directory):
@@ -36,16 +43,29 @@ async def async_save(url, directory):
     """
     split_list = url.split('/')
     filename = split_list[len(split_list) - 1]
+    split_list0 = filename.split('=')
+    filename = split_list0[len(split_list0) - 1]
     for ch in ['\\', '/', ':', '*', '?', '"', '<', '>', '|']:
-        filename = filename.replace(ch, '')
-    if not filename.lower().endswith('.jpg'):
-        filename = filename + '.jpg'
-    file_fir = directory + '/' + filename
+        filename = filename.replace(ch, '_')
 
-    if not os.path.exists(file_fir):
+    file_suf_list = filename.lower().split('.')
+    file_suf = file_suf_list[len(file_suf_list) - 1]
+    if not (file_suf == 'jpg' or file_suf == 'jpeg' or file_suf == '.png'):
+        file_suf = '.jpg'
+
+    if file_suf_list[0] == 'original':
+        filename_main = split_list[len(split_list) - 2]
+    else:
+        filename_main = file_suf_list[0]
+
+    filename = f'{filename_main}.{file_suf}'
+
+    file_dir = directory + '/' + filename
+
+    if not os.path.exists(file_dir):
         async with aiohttp.ClientSession() as client:
             image = await fetch(client, url)
-            f = await aiofiles.open(file_fir, mode='wb')
+            f = await aiofiles.open(file_dir, mode='wb')
             await f.write(image)
             await f.close()
 
@@ -108,7 +128,12 @@ class BaseDownloader(metaclass=ABCMeta):
 
         for index in range(math.ceil(self.size / self.page_size)):
             image_list_url = self.get_image_list_url(index)
-            image_list = requests.get(image_list_url, headers=self.get_header())
+            while True:
+                try:
+                    image_list = requests.get(image_list_url, headers=self.get_header())
+                    break
+                except SSLError or ConnectionError:  # Try to catch something more specific
+                    pass
 
             try:
                 data = json.loads(image_list.text)[self.photo_list_key]

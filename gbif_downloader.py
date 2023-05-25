@@ -25,8 +25,10 @@ class GbifDownloader(BaseDownloader):
             if self.check is not None:
                 species_json = species_json[self.photo_list_key]
                 for index in range(len(species_json)):
-                    if self.check & (self.name == species_json[index]['canonicalName']) \
+                    if self.check and 'canonicalName' in species_json[index] and 'taxonID' in species_json[index] and \
+                            'key' in species_json[index] and (self.name == species_json[index]['canonicalName']) \
                             and (species_json[index]['taxonID'] == 'gbif:' + str(species_json[index]['key'])):
+
                         self.id = species_json[index]['key']
 
                         image_list_url = "https://api.gbif.org/v1/occurrence/search?taxonkey=" + str(
