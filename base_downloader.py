@@ -26,9 +26,10 @@ async def fetch(client, url):
     host_url = "{0.netloc}".format(urlsplit(url))  # get host from url automatically using urllib
     while True:
         try:
-            resp = await client.get(url, proxy='http://127.0.0.1:7890', headers={
-                'User-Agent': ua.random,
-                'Host': host_url, })
+            resp = await client.get(url,  # proxy='http://127.0.0.1:20171',
+                                    headers={
+                                        'User-Agent': ua.random,
+                                        'Host': host_url, })
             return await resp.read()
         except SSLError or ClientConnectorError:  # Try to catch something more specific
             pass

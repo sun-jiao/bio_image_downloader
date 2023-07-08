@@ -1,3 +1,6 @@
+import copy
+import time
+from datetime import datetime
 import os
 from collections import Counter
 
@@ -7,7 +10,108 @@ import torch.optim as optim
 from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader, WeightedRandomSampler
 from torchvision import datasets, models, transforms
-from torchvision.models import ResNet50_Weights
+
+
+def get_model(_models_dir: str, name: str, nclass: int) -> nn.Module:
+    idx = 0
+    while os.path.exists(os.path.join(_models_dir, '%s_%d.pth' % (name, idx))):
+        idx = idx + 1
+    else:
+        if idx > 0:
+            _model = models.resnet50()
+            _model.fc = nn.Linear(model.fc.in_features, len(class_names))
+
+            _model.load_state_dict(torch.load(os.path.join(_models_dir, '%s_%d.pth' % (name, (idx - 1)))))
+            _model.to(device)
+            _model.eval()
+            print('Loading model %d.' % (idx - 1))
+        else:
+            url = "https://download.pytorch.org/models/resnet50-0676ba61.pth"
+
+            _model = models.resnet50()
+            state_dict = torch.hub.load_state_dict_from_url(url=url)
+            _model.load_state_dict(state_dict)
+
+            _model.fc = nn.Linear(_model.fc.in_features, nclass)
+            # Here the size of each output sample is set to 2.
+            # Alternatively, it can be generalized to nn.Linear(num_ftrs, len(class_names)).
+            _model = _model.to(device)
+    return _model
+
+
+def train_model(_model, _criterion, _optimizer, _scheduler, _num_epochs=25):
+    since = time.time()
+
+    best_acc = 0.0
+    best_model_wts = copy.deepcopy(_model.state_dict())
+
+    for epoch in range(_num_epochs):
+        print('Epoch {}/{}'.format(epoch, _num_epochs - 1))
+        print('-' * 10)
+
+        for phase in ['train', 'val']:
+            if phase == 'train':
+                _model.train()  # Set model to training mode
+            else:
+                _model.eval()  # Set model to evaluate mode
+
+            running_loss = 0.0
+            running_corrects = 0
+
+            # Iterate over data.
+            for inputs, labels in dataloaders[phase]:
+                inputs = inputs.to(device)
+                labels = labels.to(device)
+
+                # zero the parameter gradients
+                _optimizer.zero_grad()
+
+                # forward
+                # track history if only in train
+                with torch.set_grad_enabled(phase == 'train'):
+                    outputs = _model(inputs)
+                    _, preds = torch.max(outputs, 1)
+                    loss = _criterion(outputs, labels)
+
+                    # backward + optimize only if in training phase
+                    if phase == 'train':
+                        loss.backward()
+                        _optimizer.step()
+
+                # statistics
+                running_loss += loss.item() * inputs.size(0)
+                running_corrects += torch.sum(input=labels.data)
+            if phase == 'train':
+                _scheduler.step()
+
+            epoch_loss = running_loss / dataset_sizes[phase]
+            epoch_acc = float(running_corrects) / dataset_sizes[phase]
+
+            print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss, epoch_acc))
+
+            # deep copy the model
+            if phase == 'val' and epoch_acc > best_acc:
+                best_acc = epoch_acc
+                best_model_wts = copy.deepcopy(_model.state_dict())
+
+    time_elapsed = time.time() - since
+    print('Training complete in {:.0f}m {:.0f}s'.format(
+        time_elapsed // 60, time_elapsed % 60))
+    print('Best val Acc: {:4f}'.format(best_acc))
+
+    # load best model weights
+    _model.load_state_dict(best_model_wts)
+    return _model
+
+
+def save_model(_model: nn.Module, _models_dir: str, name: str):
+    # Save model
+    idx = 0
+    while os.path.exists(os.path.join(_models_dir, '%s_%d.pth' % (name, idx))):
+        idx = idx + 1
+    else:
+        torch.save(_model.state_dict(), os.path.join(_models_dir, '%s_%d.pth' % (name, idx)))
+
 
 # 数据增强和预处理
 data_transforms = {
@@ -18,7 +122,7 @@ data_transforms = {
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ]),
     'val': transforms.Compose([
-        transforms.Resize(256),
+        transforms.Resize(224),
         transforms.CenterCrop(224),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
@@ -26,11 +130,16 @@ data_transforms = {
 }
 
 data_dir = './data'
+models_dir = 'models'
+if not os.path.exists(models_dir):
+    os.mkdir(models_dir)
+
 image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x),
                                           data_transforms[x])
                   for x in ['train', 'val']}
 dataloaders = {}
 dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val']}
+class_names = image_datasets['train'].classes
 
 # 计算每个类别的权重
 class_counts = Counter(img[1] for img in image_datasets['train'])
@@ -42,17 +151,13 @@ class_weights = torch.tensor(class_weights, dtype=torch.float)
 sampler = WeightedRandomSampler(weights=class_weights, num_samples=len(class_weights), replacement=True)
 
 # 创建数据加载器
-dataloaders['train'] = DataLoader(image_datasets['train'], batch_size=32, sampler=sampler, num_workers=4)
-dataloaders['val'] = DataLoader(image_datasets['val'], batch_size=32, shuffle=True, num_workers=4)
+dataloaders['train'] = DataLoader(image_datasets['train'], batch_size=4, shuffle=True, sampler=sampler, num_workers=4)
+dataloaders['val'] = DataLoader(image_datasets['val'], batch_size=4, shuffle=True, num_workers=4)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # 使用预训练的ResNet-50模型
-model = models.resnet50(weights=ResNet50_Weights.IMAGENET1K_V1)
-num_ftrs = model.fc.in_features
-
-# 修改最后一层，使输出为100个类别
-model.fc = nn.Linear(num_ftrs, 100)
+model = get_model(models_dir, 'model50', len(class_names))
 
 model = model.to(device)
 
@@ -64,51 +169,7 @@ optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 # 学习率调整策略
 exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
 
-
-def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
-    for epoch in range(num_epochs):
-        print('Epoch {}/{}'.format(epoch, num_epochs - 1))
-        print('-' * 10)
-
-        for phase in ['train', 'val']:
-            if phase == 'train':
-                model.train()
-            else:
-                model.eval()
-
-            running_loss = 0.0
-            running_corrects = 0
-
-            for inputs, labels in dataloaders[phase]:
-                inputs = inputs.to(device)
-                labels = labels.to(device)
-
-                optimizer.zero_grad()
-
-                with torch.set_grad_enabled(phase == 'train'):
-                    outputs = model(inputs)
-                    _, preds = torch.max(outputs, 1)
-                    loss = criterion(outputs, labels)
-
-                    if phase == 'train':
-                        loss.backward()
-                        optimizer.step()
-
-                running_loss += loss.item() * inputs.size(0)
-                running_corrects += torch.sum(input=labels.data)
-
-            if phase == 'train':
-                scheduler.step()
-
-            epoch_loss = running_loss / dataset_sizes[phase]
-            epoch_acc = float(running_corrects) / dataset_sizes[phase]
-
-            print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss, epoch_acc))
-
-    return model
-
-
 # 训练模型
-model = train_model(model, criterion, optimizer, exp_lr_scheduler, num_epochs=1)
+model = train_model(model, criterion, optimizer, exp_lr_scheduler, _num_epochs=1)
 
-torch.save(model.state_dict(), 'checkpoint.pth')
+save_model(model, models_dir, 'model50')

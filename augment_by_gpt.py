@@ -37,15 +37,16 @@ def augment_data(image):
     return image
 
 
-# 示例代码
-image_path = "example.jpg"
-image = Image.open(image_path)
+if __name__ == '__main__':
+    # 示例代码
+    image_path = "example.jpg"
+    image = Image.open(image_path)
 
-# 展示原图
-image.show()
+    # 展示原图
+    image.show()
 
-# 进行数据增强
-augmented_image = augment_data(image)
+    # 进行数据增强
+    augmented_image = augment_data(image)
 
-# 展示增强后的图像
-augmented_image.show()
+    # 展示增强后的图像
+    augmented_image.show()

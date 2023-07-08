@@ -2,12 +2,14 @@
 import dataset_split
 import file_fix
 import from_csv
+from dataset_augment import dataset_augment
 
 if __name__ == '__main__':
     print('Please choose an operation\r\n'
           '[C]FH image download according to the csv file.\r\n'
           '[G]BIF image download according to the csv file.\r\n'
           '[U]pdate csv file with the number of images.\r\n'
+          '[A]ugment data.\r\n'
           '[T]rain the model.\r\n'
           '[M]ove files according to the csv file.\r\n'
           '[F]ix file name illegal character.\r\n'
@@ -34,5 +36,7 @@ if __name__ == '__main__':
             file_fix.filename()
         elif user_input == 'S':
             dataset_split.split()
+        elif user_input == 'A':
+            dataset_augment("/data/train/")
         else:
             print('Illegal input.')

@@ -15,8 +15,6 @@ import copy
 import os
 import time
 
-import matplotlib.pyplot as plt
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -24,23 +22,10 @@ import torch.utils.data
 import torchvision
 from torch.optim import lr_scheduler
 from torchvision import datasets, models, transforms
-from torchvision.models import ResNet18_Weights
 
 
 # License: BSD
 # Author: Sasank Chilamkurthy
-
-def imshow(inp, title=None):
-    """Imshow for Tensor."""
-    inp = inp.numpy().transpose((1, 2, 0))
-    mean = np.array([0.485, 0.456, 0.406])
-    std = np.array([0.229, 0.224, 0.225])
-    inp = std * inp + mean
-    inp = np.clip(inp, 0, 1)
-    plt.imshow(inp)
-    if title is not None:
-        plt.title(title)
-    plt.pause(0.001)  # pause a bit so that plots are updated
 
 
 def train_model(_model, _criterion, _optimizer, scheduler, num_epochs: int = 25):
@@ -112,40 +97,13 @@ def train_model(_model, _criterion, _optimizer, scheduler, num_epochs: int = 25)
     return _model
 
 
-def visualize_model(_model: nn.Module, num_images: int = 6):
-    was_training = _model.training
-    _model.eval()
-    images_so_far = 0
-    fig = plt.figure()
-
-    with torch.no_grad():
-        for i, (_inputs, labels) in enumerate(dataloaders['val']):
-            _inputs = _inputs.to(device)
-            labels = labels.to(device)
-
-            outputs = _model(_inputs)
-            _, preds = torch.max(outputs, 1)
-
-            for j in range(_inputs.size()[0]):
-                images_so_far += 1
-                ax = plt.subplot(num_images // 2, 2, images_so_far)
-                ax.axis('off')
-                ax.set_title('predicted: {}, label: {}'.format(class_names[preds[j]], class_names[labels[j]]))
-                imshow(_inputs.cpu().data[j])
-
-                if images_so_far == num_images:
-                    _model.train(mode=was_training)
-                    return
-        _model.train(mode=was_training)
-
-
 def get_model(_models_dir: str, name: str, nclass: int) -> nn.Module:
     idx = 0
     while os.path.exists(os.path.join(_models_dir, '%s_%d.pth' % (name, idx))):
         idx = idx + 1
     else:
         if idx > 0:
-            _model = models.resnet18()
+            _model = models.resnet50()
             # model.fc = nn.Linear(model.fc.in_features, len(class_names))
 
             _model.load_state_dict(torch.load(os.path.join(_models_dir, '%s_%d.pth' % (name, (idx - 1)))))
@@ -153,7 +111,12 @@ def get_model(_models_dir: str, name: str, nclass: int) -> nn.Module:
             _model.eval()
             print('Loading model %d.' % (idx - 1))
         else:
-            _model = models.resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
+            url = "https://download.pytorch.org/models/resnet50-0676ba61.pth"
+
+            _model = models.resnet50()
+            state_dict = torch.hub.load_state_dict_from_url(url=url)
+            _model.load_state_dict(state_dict)
+
             _model.fc = nn.Linear(_model.fc.in_features, nclass)
             # Here the size of each output sample is set to 2.
             # Alternatively, it can be generalized to nn.Linear(num_ftrs, len(class_names)).
@@ -171,8 +134,6 @@ def save_model(_model: nn.Module, _models_dir: str, name: str):
 
 
 if __name__ == '__main__':
-
-    plt.ion()  # interactive mode
 
     data_dir = 'data'
 
@@ -212,9 +173,7 @@ if __name__ == '__main__':
     # Make a grid from batch
     out = torchvision.utils.make_grid(inputs)
 
-    imshow(out, title=[class_names[x] for x in classes])
-
-    model = get_model(models_dir, 'model', len(class_names))
+    model = get_model(models_dir, 'model50', len(class_names))
 
     criterion = nn.CrossEntropyLoss()
 
@@ -228,8 +187,6 @@ if __name__ == '__main__':
     # It should take around 15-25 min on CPU. On GPU though, it takes less than a minute.
 
     model = train_model(model, criterion, optimizer, exp_lr_scheduler,
-                        num_epochs=1)
+                        num_epochs=100)
 
-    save_model(model, models_dir, 'model')
-
-    visualize_model(model)
+    save_model(model, models_dir, 'model50')

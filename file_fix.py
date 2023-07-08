@@ -1,6 +1,5 @@
 import os
 
-
 def filename():
     download = './data/train/'
     folder_list = os.listdir(download)
