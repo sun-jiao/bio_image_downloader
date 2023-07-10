@@ -167,12 +167,6 @@ if __name__ == '__main__':
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    # Get a batch of training data
-    inputs, classes = next(iter(dataloaders['train']))
-
-    # Make a grid from batch
-    out = torchvision.utils.make_grid(inputs)
-
     model = get_model(models_dir, 'model50', len(class_names))
 
     criterion = nn.CrossEntropyLoss()

@@ -1,7 +1,7 @@
 import copy
-import time
-from datetime import datetime
 import os
+import pickle
+import time
 from collections import Counter
 
 import torch
@@ -12,6 +12,28 @@ from torch.utils.data import DataLoader, WeightedRandomSampler
 from torchvision import datasets, models, transforms
 
 
+def get_sampler():
+    if os.path.exists('sampler.pkl'):
+        # 从文件中加载 sampler
+        with open('sampler.pkl', 'rb') as f:
+            return pickle.load(f)
+    else:
+        # 计算每个类别的权重
+        class_counts = Counter(img[1] for img in image_datasets['train'])
+        class_weights = {c: float(min(class_counts.values())) / class_counts[c] for c in class_counts}
+        class_weights = [class_weights[c] for c in range(len(class_counts))]
+        class_weights = torch.tensor(class_weights, dtype=torch.float)
+
+        # 创建可调整权重的采样器
+        sampler = WeightedRandomSampler(weights=class_weights, num_samples=len(class_weights), replacement=True)
+
+        # 将 sampler 保存到文件中
+        with open('sampler.pkl', 'wb') as f:
+            pickle.dump(sampler, f)
+
+        return sampler
+
+
 def get_model(_models_dir: str, name: str, nclass: int) -> nn.Module:
     idx = 0
     while os.path.exists(os.path.join(_models_dir, '%s_%d.pth' % (name, idx))):
@@ -19,7 +41,7 @@ def get_model(_models_dir: str, name: str, nclass: int) -> nn.Module:
     else:
         if idx > 0:
             _model = models.resnet50()
-            _model.fc = nn.Linear(model.fc.in_features, len(class_names))
+            _model.fc = nn.Linear(_model.fc.in_features, len(class_names))
 
             _model.load_state_dict(torch.load(os.path.join(_models_dir, '%s_%d.pth' % (name, (idx - 1)))))
             _model.to(device)
@@ -141,18 +163,11 @@ dataloaders = {}
 dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val']}
 class_names = image_datasets['train'].classes
 
-# 计算每个类别的权重
-class_counts = Counter(img[1] for img in image_datasets['train'])
-class_weights = {c: float(min(class_counts.values())) / class_counts[c] for c in class_counts}
-class_weights = [class_weights[c] for c in range(len(class_counts))]
-class_weights = torch.tensor(class_weights, dtype=torch.float)
-
-# 创建可调整权重的采样器
-sampler = WeightedRandomSampler(weights=class_weights, num_samples=len(class_weights), replacement=True)
+sampler: WeightedRandomSampler = get_sampler()
 
 # 创建数据加载器
-dataloaders['train'] = DataLoader(image_datasets['train'], batch_size=4, shuffle=True, sampler=sampler, num_workers=4)
-dataloaders['val'] = DataLoader(image_datasets['val'], batch_size=4, shuffle=True, num_workers=4)
+dataloaders['train'] = DataLoader(image_datasets['train'], batch_size=32, sampler=sampler, num_workers=4)
+dataloaders['val'] = DataLoader(image_datasets['val'], batch_size=32, sampler=sampler, num_workers=4)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -164,10 +179,10 @@ model = model.to(device)
 criterion = nn.CrossEntropyLoss()
 
 # 优化器
-optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+optimizer = optim.SGD(model.parameters(), lr=0.5, momentum=0.9)
 
 # 学习率调整策略
-exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
+exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.9)
 
 # 训练模型
 model = train_model(model, criterion, optimizer, exp_lr_scheduler, _num_epochs=1)

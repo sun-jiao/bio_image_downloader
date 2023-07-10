@@ -133,3 +133,4 @@ models/*
 predict/*
 *.csv
 *.xlsx
+sampler.pkl
