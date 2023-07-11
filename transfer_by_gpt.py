@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader, WeightedRandomSampler
 from torchvision import datasets, models, transforms
 
 
-def get_sampler():
+def get_sampler() -> WeightedRandomSampler:
     if os.path.exists('sampler.pkl'):
         # 从文件中加载 sampler
         with open('sampler.pkl', 'rb') as f:
@@ -34,30 +34,47 @@ def get_sampler():
         return sampler
 
 
-def get_model(_models_dir: str, name: str, nclass: int) -> nn.Module:
+def freeze_model(model: nn.Module) -> nn.Module:
+    ######################################################################
+    # Freeze all the network except the final layer. We need
+    # to set ``requires_grad = False`` to freeze the parameters so that the
+    # gradients are not computed in ``backward()``.
+    #
+    # You can read more about this in the documentation
+    # `here <https://pytorch.org/docs/notes/autograd.html#excluding-subgraphs-from-backward>`__.
+    #
+
+    for param in model.parameters():
+        param.requires_grad = False
+
+    return model
+
+
+def get_model(_models_dir: str, name: str, nclass: int, freeze: bool) -> nn.Module:
     idx = 0
     while os.path.exists(os.path.join(_models_dir, '%s_%d.pth' % (name, idx))):
         idx = idx + 1
     else:
         if idx > 0:
-            _model = models.resnet50()
-            _model.fc = nn.Linear(_model.fc.in_features, len(class_names))
-
-            _model.load_state_dict(torch.load(os.path.join(_models_dir, '%s_%d.pth' % (name, (idx - 1)))))
-            _model.to(device)
-            _model.eval()
-            print('Loading model %d.' % (idx - 1))
-        else:
-            url = "https://download.pytorch.org/models/resnet50-0676ba61.pth"
-
-            _model = models.resnet50()
-            state_dict = torch.hub.load_state_dict_from_url(url=url)
-            _model.load_state_dict(state_dict)
+            _model = models.resnet152()
+            if freeze:
+                _model = freeze_model(_model)
 
             _model.fc = nn.Linear(_model.fc.in_features, nclass)
+
+            _model.load_state_dict(torch.load(os.path.join(_models_dir, '%s_%d.pth' % (name, (idx - 1)))))
+            _model = _model.to(device)
+            print('Loading model %d.' % (idx - 1))
+        else:
+            _model = models.resnet152(pretrained='IMAGENET1K_V2')
+            if freeze:
+                _model = freeze_model(_model)
+
             # Here the size of each output sample is set to 2.
             # Alternatively, it can be generalized to nn.Linear(num_ftrs, len(class_names)).
+            _model.fc = nn.Linear(_model.fc.in_features, nclass)
             _model = _model.to(device)
+
     return _model
 
 
@@ -102,12 +119,12 @@ def train_model(_model, _criterion, _optimizer, _scheduler, _num_epochs=25):
 
                 # statistics
                 running_loss += loss.item() * inputs.size(0)
-                running_corrects += torch.sum(input=labels.data)
+                running_corrects += torch.sum(preds == labels.data)
             if phase == 'train':
                 _scheduler.step()
 
             epoch_loss = running_loss / dataset_sizes[phase]
-            epoch_acc = float(running_corrects) / dataset_sizes[phase]
+            epoch_acc = running_corrects.double() / dataset_sizes[phase]
 
             print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss, epoch_acc))
 
@@ -172,19 +189,22 @@ dataloaders['val'] = DataLoader(image_datasets['val'], batch_size=32, sampler=sa
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # 使用预训练的ResNet-50模型
-model = get_model(models_dir, 'model50', len(class_names))
+model = get_model(models_dir, 'model152', len(class_names), freeze=True)
 
 model = model.to(device)
 
 criterion = nn.CrossEntropyLoss()
 
 # 优化器
-optimizer = optim.SGD(model.parameters(), lr=0.5, momentum=0.9)
+# Observe that only parameters of final layer are being optimized as
+# opposed to before.
+optimizer = optim.SGD(model.fc.parameters(), lr=0.001, momentum=0.9)
 
 # 学习率调整策略
-exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.9)
+# Decay LR by a factor of 0.1 every 7 epochs
+exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
 
 # 训练模型
-model = train_model(model, criterion, optimizer, exp_lr_scheduler, _num_epochs=1)
+model = train_model(model, criterion, optimizer, exp_lr_scheduler, _num_epochs=100)
 
-save_model(model, models_dir, 'model50')
+save_model(model, models_dir, 'model152')
