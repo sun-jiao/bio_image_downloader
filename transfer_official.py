@@ -34,66 +34,43 @@ These two major transfer learning scenarios look as follows:
 # Author: Sasank Chilamkurthy
 
 import os
+import pickle
 import time
+from collections import Counter
 from tempfile import TemporaryDirectory
 
 import torch
 import torch.backends.cudnn as cudnn
 import torch.nn as nn
 import torch.optim as optim
+from torch.nn.modules.loss import _Loss
 from torch.optim import lr_scheduler
+from torch.optim.optimizer import Optimizer
+from torch.utils.data import WeightedRandomSampler
 from torchvision import datasets, models, transforms
 
-cudnn.benchmark = True
 
-######################################################################
-# Load Data
-# ---------
-#
-# We will use torchvision and torch.utils.data packages for loading the
-# data.
-#
-# The problem we're going to solve today is to train a model to classify
-# **ants** and **bees**. We have about 120 training images each for ants and bees.
-# There are 75 validation images for each class. Usually, this is a very
-# small dataset to generalize upon, if trained from scratch. Since we
-# are using transfer learning, we should be able to generalize reasonably
-# well.
-#
-# This dataset is a very small subset of imagenet.
-#
-# .. Note ::
-#    Download the data from
-#    `here <https://download.pytorch.org/tutorial/hymenoptera_data.zip>`_
-#    and extract it to the current directory.
+def get_sampler() -> WeightedRandomSampler:
+    if os.path.exists('sampler.pkl'):
+        # 从文件中加载 sampler
+        with open('sampler.pkl', 'rb') as f:
+            return pickle.load(f)
+    else:
+        # 计算每个类别的权重
+        class_counts = Counter(img[1] for img in image_datasets['train'])
+        class_weights = {c: float(min(class_counts.values())) / class_counts[c] for c in class_counts}
+        class_weights = [class_weights[c] for c in range(len(class_counts))]
+        class_weights = torch.tensor(class_weights, dtype=torch.float)
 
-# Data augmentation and normalization for training
-# Just normalization for validation
-data_transforms = {
-    'train': transforms.Compose([
-        transforms.RandomResizedCrop(224),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ]),
-    'val': transforms.Compose([
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ]),
-}
+        # 创建可调整权重的采样器
+        sampler = WeightedRandomSampler(weights=class_weights, num_samples=len(class_weights), replacement=True)
 
-data_dir = 'hymenoptera_data'
-image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x),
-                                          data_transforms[x])
-                  for x in ['train', 'val']}
-dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=4, shuffle=True, num_workers=4)
-               for x in ['train', 'val']}
-dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val']}
-class_names = image_datasets['train'].classes
+        # 将 sampler 保存到文件中
+        with open('sampler.pkl', 'wb') as f:
+            pickle.dump(sampler, f)
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        return sampler
+
 
 ######################################################################
 # Training the model
@@ -109,7 +86,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 # ``torch.optim.lr_scheduler``.
 
 
-def train_model(_model, _criterion, _optimizer, _scheduler, _num_epochs=25):
+def train_model(_model, _criterion, _optimizer, _scheduler, dataloaders, device, dataset_sizes, _num_epochs=25):
     since = time.time()
 
     # Create a temporary directory to save training checkpoints
@@ -196,7 +173,7 @@ def freeze_model(model: nn.Module) -> nn.Module:
     return model
 
 
-def get_model(_models_dir: str, name: str, nclass: int, freeze: bool) -> nn.Module:
+def get_model(_models_dir: str, name: str, nclass: int, device, freeze: bool) -> (nn.Module, _Loss, Optimizer, lr_scheduler.StepLR):
     index = 0
     while os.path.exists(os.path.join(_models_dir, '%s_%d.pth' % (name, index))):
         index = index + 1
@@ -221,8 +198,86 @@ def get_model(_models_dir: str, name: str, nclass: int, freeze: bool) -> nn.Modu
             _model.fc = nn.Linear(_model.fc.in_features, nclass)
             _model = _model.to(device)
 
-    return _model
+    _criterion = nn.CrossEntropyLoss()
 
+    # Observe that all parameters are being optimized if not freeze,
+    # Observe that only parameters of final layer are being optimized as
+    # opposed to before.
+    params = _model.fc.parameters() if freeze else _model.parameters()
+
+    _optimizer_conv = optim.SGD(params, lr=0.001, momentum=0.9)
+
+    # Decay LR by a factor of 0.1 every 7 epochs
+    _exp_lr_scheduler = lr_scheduler.StepLR(_optimizer_conv, step_size=7, gamma=0.1)
+
+    return _model, _criterion, _optimizer_conv, _exp_lr_scheduler
+
+
+def save_model(_model: nn.Module, _models_dir: str, name: str):
+    # Save model
+    idx = 0
+    while os.path.exists(os.path.join(_models_dir, '%s_%d.pth' % (name, idx))):
+        idx = idx + 1
+    else:
+        torch.save(_model.state_dict(), os.path.join(_models_dir, '%s_%d.pth' % (name, idx)))
+
+
+cudnn.benchmark = True
+
+######################################################################
+# Load Data
+# ---------
+#
+# We will use torchvision and torch.utils.data packages for loading the
+# data.
+#
+# The problem we're going to solve today is to train a model to classify
+# **ants** and **bees**. We have about 120 training images each for ants and bees.
+# There are 75 validation images for each class. Usually, this is a very
+# small dataset to generalize upon, if trained from scratch. Since we
+# are using transfer learning, we should be able to generalize reasonably
+# well.
+#
+# This dataset is a very small subset of imagenet.
+#
+# .. Note ::
+#    Download the data from
+#    `here <https://download.pytorch.org/tutorial/hymenoptera_data.zip>`_
+#    and extract it to the current directory.
+
+# Data augmentation and normalization for training
+# Just normalization for validation
+data_transforms = {
+    'train': transforms.Compose([
+        transforms.RandomResizedCrop(224),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ]),
+    'val': transforms.Compose([
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ]),
+}
+
+data_dir = 'data'
+models_dir = 'models'
+model_name = 'model152'
+
+image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x),
+                                          data_transforms[x])
+                  for x in ['train', 'val']}
+
+sampler: WeightedRandomSampler = get_sampler()
+
+dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=4, sampler=sampler, num_workers=4)
+               for x in ['train', 'val']}
+dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val']}
+class_names = image_datasets['train'].classes
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 ######################################################################
 # Finetuning the ConvNet
@@ -231,59 +286,12 @@ def get_model(_models_dir: str, name: str, nclass: int, freeze: bool) -> nn.Modu
 # Load a pretrained model and reset final fully connected layer.
 #
 
-model_ft = get_model('models', 'model152', len(class_names), freeze=False)
-
-criterion = nn.CrossEntropyLoss()
-
-# Observe that all parameters are being optimized
-optimizer_ft = optim.SGD(model_ft.parameters(), lr=0.001, momentum=0.9)
-
-# Decay LR by a factor of 0.1 every 7 epochs
-exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.1)
+model_ft, criterion, optimizer_ft, exp_lr_scheduler = get_model(models_dir, model_name, len(class_names), device, freeze=False)
 
 ######################################################################
 # Train and evaluate
-# ^^^^^^^^^^^^^^^^^^
-#
-# It should take around 15-25 min on CPU. On GPU though, it takes less than a
-# minute.
 #
 
-model_ft = train_model(model_ft, criterion, optimizer_ft, exp_lr_scheduler,
-                       _num_epochs=25)
+model_ft = train_model(model_ft, criterion, optimizer_ft, exp_lr_scheduler, dataloaders, device, dataset_sizes, _num_epochs=1000)
 
-######################################################################
-# ConvNet as fixed feature extractor
-# ----------------------------------
-#
-# Here, we need to freeze all the network except the final layer. We need
-# to set ``requires_grad = False`` to freeze the parameters so that the
-# gradients are not computed in ``backward()``.
-#
-# You can read more about this in the documentation
-# `here <https://pytorch.org/docs/notes/autograd.html#excluding-subgraphs-from-backward>`__.
-#
-
-
-model_conv = get_model('models', 'model152', len(class_names), freeze=True)
-
-criterion = nn.CrossEntropyLoss()
-
-# Observe that only parameters of final layer are being optimized as
-# opposed to before.
-optimizer_conv = optim.SGD(model_conv.fc.parameters(), lr=0.001, momentum=0.9)
-
-# Decay LR by a factor of 0.1 every 7 epochs
-exp_lr_scheduler = lr_scheduler.StepLR(optimizer_conv, step_size=7, gamma=0.1)
-
-######################################################################
-# Train and evaluate
-# ^^^^^^^^^^^^^^^^^^
-#
-# On CPU this will take about half the time compared to previous scenario.
-# This is expected as gradients don't need to be computed for most of the
-# network. However, forward does need to be computed.
-#
-
-model_conv = train_model(model_conv, criterion, optimizer_conv,
-                         exp_lr_scheduler, _num_epochs=25)
+save_model(model_ft, models_dir, model_name)
