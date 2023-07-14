@@ -8,30 +8,36 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim import lr_scheduler
-from torch.utils.data import DataLoader, WeightedRandomSampler
+from torch.utils.data import DataLoader, WeightedRandomSampler, RandomSampler
 from torchvision import datasets, models, transforms
+from sklearn.utils import class_weight
 
 
 def get_sampler() -> WeightedRandomSampler:
-    if os.path.exists('sampler.pkl'):
-        # 从文件中加载 sampler
-        with open('sampler.pkl', 'rb') as f:
-            return pickle.load(f)
-    else:
-        # 计算每个类别的权重
-        class_counts = Counter(img[1] for img in image_datasets['train'])
-        class_weights = {c: float(min(class_counts.values())) / class_counts[c] for c in class_counts}
-        class_weights = [class_weights[c] for c in range(len(class_counts))]
-        class_weights = torch.tensor(class_weights, dtype=torch.float)
+    # if os.path.exists('sampler.pkl'):
+    #     # 从文件中加载 sampler
+    #     with open('sampler.pkl', 'rb') as f:
+    #         return pickle.load(f)
+    # else:
+    #     target = image ...
+    # 计算每个类别的权重
 
-        # 创建可调整权重的采样器
-        sampler = WeightedRandomSampler(weights=class_weights, num_samples=len(class_weights), replacement=True)
+    targets = image_datasets['train'].targets  # 获取样本标签列表
+    weights = class_weight.compute_sample_weight("balanced", targets)
+    class_weights = torch.from_numpy(weights)
 
-        # 将 sampler 保存到文件中
-        with open('sampler.pkl', 'wb') as f:
-            pickle.dump(sampler, f)
+    # Assuming you want to sample 10% of the dataset, the ratio should be 0.1
+    sampling_ratio = 1
+    num_samples = int(len(image_datasets['train']) * sampling_ratio)
 
-        return sampler
+    # 创建可调整权重的采样器
+    _sampler = WeightedRandomSampler(weights=class_weights, num_samples=num_samples, replacement=True)
+
+    # 将 sampler 保存到文件中
+    # with open('sampler.pkl', 'wb') as f:
+    #     pickle.dump(_sampler, f)
+
+    return _sampler
 
 
 def freeze_model(model: nn.Module) -> nn.Module:
@@ -187,7 +193,7 @@ sampler: WeightedRandomSampler = get_sampler()
 
 # 创建数据加载器
 dataloaders['train'] = DataLoader(image_datasets['train'], batch_size=32, sampler=sampler, num_workers=4)
-dataloaders['val'] = DataLoader(image_datasets['val'], batch_size=32, sampler=sampler, num_workers=4)
+dataloaders['val'] = DataLoader(image_datasets['val'], batch_size=32, shuffle=True, num_workers=4)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -207,7 +213,8 @@ optimizer = optim.SGD(model.fc.parameters(), lr=0.001, momentum=0.9)
 # Decay LR by a factor of 0.1 every 7 epochs
 exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
 
-# 训练模型
-model = train_model(model, criterion, optimizer, exp_lr_scheduler, _num_epochs=100)
+for i in range(100):
+    # 训练模型
+    model = train_model(model, criterion, optimizer, exp_lr_scheduler, _num_epochs=100)
 
-save_model(model, models_dir, 'model152')
+    save_model(model, models_dir, 'model152')
