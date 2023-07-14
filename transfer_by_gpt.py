@@ -88,6 +88,9 @@ def train_model(_model, _criterion, _optimizer, _scheduler, _num_epochs=25):
         print('Epoch {}/{}'.format(epoch, _num_epochs - 1))
         print('-' * 10)
 
+        # load best model weights
+        # _model.load_state_dict(best_model_wts)
+
         for phase in ['train', 'val']:
             if phase == 'train':
                 _model.train()  # Set model to training mode
