@@ -136,3 +136,4 @@ predict/*
 sampler.pkl
 *.pth
 *.pt
+*.pyth
