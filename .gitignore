@@ -134,3 +134,4 @@ predict/*
 *.csv
 *.xlsx
 sampler.pkl
+*.pth

@@ -1,8 +1,8 @@
 import copy
 import os
-import pickle
+# import pickle
 import time
-from collections import Counter
+# from collections import Counter
 
 import torch
 import torch.nn as nn
@@ -11,6 +11,9 @@ from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader, WeightedRandomSampler, RandomSampler
 from torchvision import datasets, models, transforms
 from sklearn.utils import class_weight
+
+# Assuming you want to sample 10% of the dataset, the ratio should be 0.1
+sampling_ratio = 0.1
 
 
 def get_sampler() -> WeightedRandomSampler:
@@ -26,8 +29,7 @@ def get_sampler() -> WeightedRandomSampler:
     weights = class_weight.compute_sample_weight("balanced", targets)
     class_weights = torch.from_numpy(weights)
 
-    # Assuming you want to sample 10% of the dataset, the ratio should be 0.1
-    sampling_ratio = 1
+    # sampling ratio is defined out scope for usage in train.
     num_samples = int(len(image_datasets['train']) * sampling_ratio)
 
     # 创建可调整权重的采样器
@@ -135,6 +137,10 @@ def train_model(_model, _criterion, _optimizer, _scheduler, _num_epochs=25):
             epoch_loss = running_loss / dataset_sizes[phase]
             epoch_acc = running_corrects.double() / dataset_sizes[phase]
 
+            if phase == 'train':
+                epoch_loss = epoch_loss / sampling_ratio
+                epoch_acc = epoch_acc / sampling_ratio
+
             print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss, epoch_acc))
 
             # deep copy the model
@@ -207,14 +213,14 @@ criterion = nn.CrossEntropyLoss()
 # 优化器
 # Observe that only parameters of final layer are being optimized as
 # opposed to before.
-optimizer = optim.SGD(model.fc.parameters(), lr=0.001, momentum=0.9)
+optimizer = optim.SGD(model.fc.parameters(), lr=0.0001, momentum=0.7)
 
 # 学习率调整策略
 # Decay LR by a factor of 0.1 every 7 epochs
 exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
 
-for i in range(100):
-    # 训练模型
-    model = train_model(model, criterion, optimizer, exp_lr_scheduler, _num_epochs=100)
+# for i in range(100):
+# 训练模型
+model = train_model(model, criterion, optimizer, exp_lr_scheduler, _num_epochs=100)
 
-    save_model(model, models_dir, 'model152')
+save_model(model, models_dir, 'model152')
