@@ -137,3 +137,6 @@ sampler.pkl
 *.pth
 *.pt
 *.pyth
+*.png
+*.jpg
+*.json
