@@ -58,7 +58,7 @@ class CfhDownloader(BaseDownloader, ABC):
 if __name__ == '__main__':
     start = datetime.now()
 
-    butterfly = CfhDownloader(name="金裳凤蝶", directory="Troides aeacus test", page_size=25, check=False)
+    butterfly = CfhDownloader(name="绿鹭", directory="download_test", page_size=25, check=False)
     butterfly.download()
 
     end = datetime.now()

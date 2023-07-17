@@ -45,10 +45,10 @@ def get_filename(url):
 
     file_suf_list = filename.lower().split('.')
     file_suf = file_suf_list[len(file_suf_list) - 1]
-    if not (file_suf == 'jpg' or file_suf == 'jpeg' or file_suf == '.png'):
-        file_suf = '.jpg'
+    if file_suf not in ['jpg', 'jpeg', 'png', 'gif']:
+        return None
 
-    if file_suf_list[0] == 'original':
+    if file_suf_list[0] in ['original', 'thumb', 'small', 'medium', 'large']:
         filename_main = split_list[len(split_list) - 2]
     else:
         filename_main = file_suf_list[0]
@@ -65,6 +65,9 @@ async def async_save(url, directory):
     """
 
     filename = get_filename(url)
+
+    if filename == None:
+        return
 
     file_dir = directory + '/' + filename
 

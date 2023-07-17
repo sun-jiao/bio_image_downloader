@@ -1,0 +1,53 @@
+先用这个来根据学名或俗名搜索物种代码，用俗名搜索的时候需要指定locale。
+这个网址的请求必须提供key，可以先访问https://ebird.org/explore获得一个，
+key位于具有Suggest class的一个div的子div的data-suggest-url属性中，例如：
+
+<div data-suggest-url="https://api.ebird.org/v2/ref/taxon/find?key=jfekjedvescr&q=%QUERY"> </div>
+
+直接将%QUERY替换为检索关键词即可，注意关键词中不能以下划线代替空格。
+
+返回的数据格式类似于：
+
+[
+{
+"code": "chbpar3",
+"name": "灰胸竹鸡 - Bambusicola thoracicus"
+}
+]
+
+然后可以根据此url来获取图片数量。
+
+https://media.ebird.org/api/v2/stats/media-count?taxonCode=chbpar3&birdOnly=true
+
+返回的数据格式类似于：
+{
+"audio": 59,
+"photo": 197,
+"video": 8
+}
+
+然后可以使用此url来获取图片列表：
+
+https://media.ebird.org/api/v2/search?taxonCode=chbpar3&sort=rating_rank_desc&mediaType=photo&birdOnly=true
+
+返回数据格式：
+
+[
+{
+"assetId": 387159691,
+…: …
+},
+…: …
+{
+"assetId": 472773641,
+"cursorMark": "MEUtMTZfXzQ3Mjc3MzY0MQ",
+}
+]
+
+最后一张图片会额外显示一个cursorMark，下一次的请求添加cursorMark参数进行翻页。
+
+https://media.ebird.org/api/v2/search?taxonCode=brnpri2&sort=rating_rank_desc&mediaType=photo&birdOnly=true&initialCursorMark=MEUtMTZfXzQ3Mjc3MzY0MQ
+
+然后从这里拿到图片：
+
+https://cdn.download.ams.birds.cornell.edu/api/v2/asset/{assetId}/{resolution}

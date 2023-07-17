@@ -64,7 +64,7 @@ class GbifDownloader(BaseDownloader):
         media_list = json_item['media']
         for media_item in media_list:
             try:
-                url_list.append('https://api.gbif.org/v1/image/unsafe/' + str(media_item['identifier']))
+                url_list.append('https://api.gbif.org/v1/image/unsafe/' + str(media_item['identifier']).replace('original', 'medium')) # thumb, small, medium, large
                 # with the 'api.gbif.org' prefix to get thumbnail, without it to get original size
                 if self.first_only:
                     break
@@ -77,8 +77,7 @@ class GbifDownloader(BaseDownloader):
 if __name__ == '__main__':
     start = datetime.now()
 
-    butterfly = GbifDownloader(name="Speyeria", directory="Speyeria", page_size=25, check=True, folder_size=2000,
-                               base_directory='./data/train/')
+    butterfly = GbifDownloader(name="Nothocercus bonapartei", directory="Nothocercus_bonapartei", page_size=25, check=True)
     butterfly.download()
 
     end = datetime.now()

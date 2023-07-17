@@ -3,7 +3,7 @@ import random
 import shutil
 
 
-def split(train = 8, val = 1, test = 1):
+def split(train=9, val=1, test=0):
     total = train + val + test
     train_dir = './data/train/'
     val_dir = './data/val/'
