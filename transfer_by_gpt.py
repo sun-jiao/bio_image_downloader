@@ -58,30 +58,47 @@ def freeze_model(model: nn.Module) -> nn.Module:
     return model
 
 
+def max_index_file(directory, prefix, suffix):
+    max_index = -1
+    max_file = None
+
+    for filename in os.listdir(directory):
+        if filename.startswith(prefix) and filename.endswith(suffix):
+            # 提取索引部分
+            index_str = filename[len(prefix) + 1: -len(suffix) - 1]
+            try:
+                index = int(index_str)
+                if index > max_index:
+                    max_index = index
+                    max_file = filename
+            except ValueError:
+                continue
+
+    return max_index, max_file
+
+
 def get_model(_models_dir: str, name: str, nclass: int, freeze: bool) -> nn.Module:
-    idx = 0
-    while os.path.exists(os.path.join(_models_dir, '%s_%d.pth' % (name, idx))):
-        idx = idx + 1
+    _, max_file = max_index_file(_models_dir, name, 'pth')
+
+    if max_file is None:
+        _model = models.resnet152(pretrained='IMAGENET1K_V2')
+        if freeze:
+            _model = freeze_model(_model)
+
+        # Here the size of each output sample is set to 2.
+        # Alternatively, it can be generalized to nn.Linear(num_ftrs, len(class_names)).
+        _model.fc = nn.Linear(_model.fc.in_features, nclass)
+        _model = _model.to(device)
     else:
-        if idx > 0:
-            _model = models.resnet152()
-            if freeze:
-                _model = freeze_model(_model)
+        _model = models.resnet152()
+        if freeze:
+            _model = freeze_model(_model)
 
-            _model.fc = nn.Linear(_model.fc.in_features, nclass)
+        _model.fc = nn.Linear(_model.fc.in_features, nclass)
 
-            _model.load_state_dict(torch.load(os.path.join(_models_dir, '%s_%d.pth' % (name, (idx - 1)))))
-            _model = _model.to(device)
-            print('Loading model %d.' % (idx - 1))
-        else:
-            _model = models.resnet152(pretrained='IMAGENET1K_V2')
-            if freeze:
-                _model = freeze_model(_model)
-
-            # Here the size of each output sample is set to 2.
-            # Alternatively, it can be generalized to nn.Linear(num_ftrs, len(class_names)).
-            _model.fc = nn.Linear(_model.fc.in_features, nclass)
-            _model = _model.to(device)
+        _model.load_state_dict(torch.load(os.path.join(_models_dir, max_file)))
+        _model = _model.to(device)
+        print(f'Loading model {max_file}.')
 
     return _model
 
@@ -159,12 +176,8 @@ def train_model(_model, _criterion, _optimizer, _scheduler, _num_epochs=25):
 
 
 def save_model(_model: nn.Module, _models_dir: str, name: str):
-    # Save model
-    idx = 0
-    while os.path.exists(os.path.join(_models_dir, '%s_%d.pth' % (name, idx))):
-        idx = idx + 1
-    else:
-        torch.save(_model.state_dict(), os.path.join(_models_dir, '%s_%d.pth' % (name, idx)))
+    max_index, _ = max_index_file(_models_dir, name, 'pth')
+    torch.save(_model.state_dict(), os.path.join(_models_dir, f'{name}_{max_index + 1}.pth'))
 
 
 # 数据增强和预处理

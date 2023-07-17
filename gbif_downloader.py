@@ -64,7 +64,10 @@ class GbifDownloader(BaseDownloader):
         media_list = json_item['media']
         for media_item in media_list:
             try:
-                url_list.append('https://api.gbif.org/v1/image/unsafe/' + str(media_item['identifier']).replace('original', 'medium')) # thumb, small, medium, large
+                new_url = 'https://api.gbif.org/v1/image/unsafe/' + str(media_item['identifier']).\
+                    replace('original', 'medium')  # thumb, small, medium, large
+                if 'xeno-canto' not in new_url:
+                    url_list.append(new_url)
                 # with the 'api.gbif.org' prefix to get thumbnail, without it to get original size
                 if self.first_only:
                     break

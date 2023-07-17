@@ -7,7 +7,7 @@ from json import JSONDecodeError
 import aiofiles
 import aiohttp
 import requests
-from aiohttp import ClientConnectorError
+from aiohttp import ClientConnectorError, ServerDisconnectedError
 from fake_useragent import UserAgent
 from abc import abstractmethod, ABCMeta
 from urllib.parse import urlsplit
@@ -31,11 +31,14 @@ async def fetch(client, url):
                                         'User-Agent': ua.random,
                                         'Host': host_url, })
             return await resp.read()
-        except SSLError or ClientConnectorError:  # Try to catch something more specific
+        except SSLError or ClientConnectorError or ServerDisconnectedError:  # Try to catch something more specific
             pass
 
 
 def get_filename(url):
+    if 'xeno-canto' in url:
+        return None
+
     split_list = url.split('/')
     filename = split_list[len(split_list) - 1]
     split_list0 = filename.split('=')
@@ -66,7 +69,7 @@ async def async_save(url, directory):
 
     filename = get_filename(url)
 
-    if filename == None:
+    if filename is None:
         return
 
     file_dir = directory + '/' + filename
