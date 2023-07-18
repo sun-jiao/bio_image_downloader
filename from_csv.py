@@ -6,6 +6,7 @@ import shutil
 
 from cfh_downloader import CfhDownloader
 from gbif_downloader import GbifDownloader
+from webpage_downloader import bing_download
 
 
 def from_csv_in_cfh(filename):
@@ -36,6 +37,14 @@ def from_csv_in_gbif(filename):
             butterfly = GbifDownloader(name=row[1], directory=row[2], check=True, folder_size=2000,
                                        base_directory='./data/train/')
             butterfly.download()
+
+
+def from_csv_in_bing(filename):
+    with open(filename, encoding='utf-8') as file:
+        f_csv = csv.reader(file)
+        for row in f_csv:
+            bing_download(name=row[1], directory=row[2], base_directory='./data/train/')
+
 
 
 def from_csv_move_file(filename):
