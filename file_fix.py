@@ -1,4 +1,6 @@
 import os
+import re
+
 
 def filename():
     download = './data/train/'
@@ -44,3 +46,33 @@ def remove_duplicate_files(path):
             lower_files = [f.lower() for f in files]
             if lower_files.count(file.lower()) > 1:
                 os.remove(fullpath)
+
+
+def dump_number_fix():
+    work_folder = './data/train'
+    folder_names = os.listdir(work_folder)
+
+    # 用于存储已经出现的序号
+    seen_numbers = {}
+
+    for folder_name in folder_names:
+        names = folder_name.split('.')
+        if not len(names) == 2:
+            continue
+
+        number = int(names[0])
+        name = names[1]
+        if number:
+            if number in seen_numbers.keys():
+                file = os.listdir(os.path.join(work_folder, folder_name))[0]  # 这是在第二次匹配到的文件夹
+                if file.startswith(str(number)):  # 所以说明第二次匹配到的是旧名字
+                    old_name = name  # old_name 是旧名字
+                    name = seen_numbers[number]  # name是新名字
+                else:
+                    old_name = seen_numbers[number]
+                for file in os.listdir(os.path.join(work_folder, f'{number}.{old_name}')):
+                    file_dir = os.path.join(os.path.join(work_folder, f'{number}.{old_name}'), file)
+                    os.rename(file_dir, file_dir.replace(old_name, name))
+                os.removedirs(os.path.join(work_folder, f'{number}.{old_name}'))
+            else:
+                seen_numbers[number] = name

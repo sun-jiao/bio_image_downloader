@@ -3,9 +3,6 @@ import sys
 
 from PIL import Image
 
-import os
-from PIL import Image
-
 
 # fix image file extension and delete error file
 def fix_files(root_dir):
@@ -23,6 +20,12 @@ def fix_files(root_dir):
                 print(f"Deleted file: {file_path}")
                 continue
 
+            # 修改文件后缀名
+            file_extension : str
+            file_name, file_extension = os.path.splitext(file_path)
+            if file_extension.lower() in ['.jpg', '.jpeg', '.png', '.gif', '.bmp']:
+                continue
+
             # 获取推断的图片格式对应的后缀名
             if image_format == "jpeg":
                 new_extension = ".jpg"
@@ -35,11 +38,6 @@ def fix_files(root_dir):
             else:
                 continue
 
-            # 修改文件后缀名
-            file_name, file_extension = os.path.splitext(file_path)
-            if file_extension == new_extension:
-                continue
-                
             new_file_path = file_name + new_extension
             os.rename(file_path, new_file_path)
             print(f"Renamed file: {file_path} -> {new_file_path}")
