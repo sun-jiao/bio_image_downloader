@@ -3,18 +3,22 @@ import multiprocessing
 import os
 # import pickle
 import time
-# from collections import Counter
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.optim import lr_scheduler
-from torch.utils.data import DataLoader, WeightedRandomSampler, RandomSampler
-from torchvision import datasets, models, transforms
 from sklearn.utils import class_weight
+from torch.optim import lr_scheduler
+from torch.utils.data import DataLoader, WeightedRandomSampler
+from torchvision import datasets, models, transforms
+from torchvision.models import EfficientNet_V2_L_Weights
+
+# from collections import Counter
 
 # Assuming you want to sample 10% of the dataset, the ratio should be 0.1
 sampling_ratio = 0.1
+
+model_name = 'efv2l'
 
 
 def get_sampler() -> WeightedRandomSampler:
@@ -82,25 +86,23 @@ def get_model(_models_dir: str, name: str, nclass: int, freeze: bool) -> nn.Modu
     _, max_file = max_index_file(_models_dir, name, 'pth')
 
     if max_file is None:
-        _model = models.resnet152(pretrained='IMAGENET1K_V2')
-        if freeze:
-            _model = freeze_model(_model)
-
-        # Here the size of each output sample is set to 2.
-        # Alternatively, it can be generalized to nn.Linear(num_ftrs, len(class_names)).
-        _model.fc = nn.Linear(_model.fc.in_features, nclass)
-        _model = _model.to(device)
+        pretrained = EfficientNet_V2_L_Weights.DEFAULT
     else:
-        _model = models.resnet152()
-        if freeze:
-            _model = freeze_model(_model)
-
-        _model.fc = nn.Linear(_model.fc.in_features, nclass)
-
-        _model.load_state_dict(torch.load(os.path.join(_models_dir, max_file)))
-        _model = _model.to(device)
+        pretrained = None
         print(f'Loading model {max_file}.')
 
+    _model = models.efficientnet_v2_l(weights=pretrained)
+    if freeze:
+        _model = freeze_model(_model)
+
+    # Here the size of each output sample is set to 2.
+    # Alternatively, it can be generalized to nn.Linear(num_ftrs, len(class_names)).
+    _model.classifier[1] = nn.Linear(_model.classifier[1].in_features, nclass)
+
+    if max_file is not None:
+        _model.load_state_dict(torch.load(os.path.join(_models_dir, max_file)))
+
+    _model = _model.to(device)
     return _model
 
 
@@ -165,6 +167,7 @@ def train_model(_model, _criterion, _optimizer, _scheduler, _num_epochs=25):
             if phase == 'val' and epoch_acc > best_acc:
                 best_acc = epoch_acc
                 best_model_wts = copy.deepcopy(_model.state_dict())
+                torch.save(_model.state_dict(), os.path.join(models_dir, f'{model_name}_temp.pth'))
 
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(
@@ -208,6 +211,7 @@ image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x),
 dataloaders = {}
 dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val']}
 class_names = image_datasets['train'].classes
+num_class = 12000  # len(class_names)
 
 sampler: WeightedRandomSampler = get_sampler()
 num_cpus = multiprocessing.cpu_count()
@@ -219,7 +223,7 @@ dataloaders['val'] = DataLoader(image_datasets['val'], batch_size=32, shuffle=Tr
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # 使用预训练的ResNet-50模型
-model = get_model(models_dir, 'model152', len(class_names), freeze=True)
+model = get_model(models_dir, model_name, num_class, freeze=True)
 
 model = model.to(device)
 
@@ -228,7 +232,7 @@ criterion = nn.CrossEntropyLoss()
 # 优化器
 # Observe that only parameters of final layer are being optimized as
 # opposed to before.
-optimizer = optim.SGD(model.fc.parameters(), lr=0.0001, momentum=0.7)
+optimizer = optim.SGD(model.classifier[1].parameters(), lr=0.0001, momentum=0.7)
 
 # 学习率调整策略
 # Decay LR by a factor of 0.1 every 7 epochs
@@ -236,6 +240,6 @@ exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
 
 # for i in range(100):
 # 训练模型
-model = train_model(model, criterion, optimizer, exp_lr_scheduler, _num_epochs=100)
+model = train_model(model, criterion, optimizer, exp_lr_scheduler, _num_epochs=10000)
 
-save_model(model, models_dir, 'model152')
+save_model(model, models_dir, model_name)
