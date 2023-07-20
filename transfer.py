@@ -12,13 +12,18 @@ from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader, WeightedRandomSampler
 from torchvision import datasets, models, transforms
 from torchvision.models import EfficientNet_V2_L_Weights
-
 # from collections import Counter
+from PIL import ImageFile
 
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 # Assuming you want to sample 10% of the dataset, the ratio should be 0.1
-sampling_ratio = 0.1
+sampling_ratio = 0.01
 
+data_dir = './data'
+models_dir = 'models'
 model_name = 'efv2l'
+
+freeze = False
 
 
 def get_sampler() -> WeightedRandomSampler:
@@ -151,8 +156,6 @@ def train_model(_model, _criterion, _optimizer, _scheduler, _num_epochs=25):
                 # statistics
                 running_loss += loss.item() * inputs.size(0)
                 running_corrects += torch.sum(preds == labels.data)
-            if phase == 'train':
-                _scheduler.step()
 
             epoch_loss = running_loss / dataset_sizes[phase]
             epoch_acc = running_corrects.double() / dataset_sizes[phase]
@@ -160,6 +163,7 @@ def train_model(_model, _criterion, _optimizer, _scheduler, _num_epochs=25):
             if phase == 'train':
                 epoch_loss = epoch_loss / sampling_ratio
                 epoch_acc = epoch_acc / sampling_ratio
+                _scheduler.step(epoch_acc)
 
             print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss, epoch_acc))
 
@@ -200,8 +204,6 @@ data_transforms = {
     ]),
 }
 
-data_dir = './data'
-models_dir = 'models'
 if not os.path.exists(models_dir):
     os.mkdir(models_dir)
 
@@ -211,7 +213,6 @@ image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x),
 dataloaders = {}
 dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val']}
 class_names = image_datasets['train'].classes
-num_class = 12000  # len(class_names)
 
 sampler: WeightedRandomSampler = get_sampler()
 num_cpus = multiprocessing.cpu_count()
@@ -222,8 +223,10 @@ dataloaders['val'] = DataLoader(image_datasets['val'], batch_size=32, shuffle=Tr
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-# 使用预训练的ResNet-50模型
-model = get_model(models_dir, model_name, num_class, freeze=True)
+num_class = len(class_names)
+
+# 使用模型
+model = get_model(models_dir, model_name, num_class, freeze=freeze)
 
 model = model.to(device)
 
@@ -232,14 +235,15 @@ criterion = nn.CrossEntropyLoss()
 # 优化器
 # Observe that only parameters of final layer are being optimized as
 # opposed to before.
-optimizer = optim.SGD(model.classifier[1].parameters(), lr=0.0001, momentum=0.7)
+params = model.classifier[1].parameters() if freeze else model.parameters()
+optimizer = optim.AdamW(params, lr=0.01)
 
 # 学习率调整策略
-# Decay LR by a factor of 0.1 every 7 epochs
-exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
+scheduler = lr_scheduler.ReduceLROnPlateau(
+    optimizer, "max", factor=0.1, patience=3, verbose=True, threshold=5e-3, threshold_mode="abs")
 
 # for i in range(100):
 # 训练模型
-model = train_model(model, criterion, optimizer, exp_lr_scheduler, _num_epochs=10000)
+model = train_model(model, criterion, optimizer, scheduler, _num_epochs=25)
 
 save_model(model, models_dir, model_name)

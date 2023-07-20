@@ -43,5 +43,6 @@ def fix_files(root_dir):
             print(f"Renamed file: {file_path} -> {new_file_path}")
 
 
-work_dir = filename = sys.argv[1]  # python image_ext_fix.py './data'
-fix_files(work_dir)
+if __name__ == '__main__':
+    work_dir = './data'  # sys.argv[1]  # python image_ext_fix.py './data'
+    fix_files(work_dir)
