@@ -27,14 +27,6 @@ freeze = False
 
 
 def get_sampler() -> WeightedRandomSampler:
-    # if os.path.exists('sampler.pkl'):
-    #     # 从文件中加载 sampler
-    #     with open('sampler.pkl', 'rb') as f:
-    #         return pickle.load(f)
-    # else:
-    #     target = image ...
-    # 计算每个类别的权重
-
     targets = image_datasets['train'].targets  # 获取样本标签列表
     weights = class_weight.compute_sample_weight("balanced", targets)
     class_weights = torch.from_numpy(weights)
@@ -45,14 +37,10 @@ def get_sampler() -> WeightedRandomSampler:
     # 创建可调整权重的采样器
     _sampler = WeightedRandomSampler(weights=class_weights, num_samples=num_samples, replacement=True)
 
-    # 将 sampler 保存到文件中
-    # with open('sampler.pkl', 'wb') as f:
-    #     pickle.dump(_sampler, f)
-
     return _sampler
 
 
-def freeze_model(model: nn.Module) -> nn.Module:
+def freeze_model(_model: nn.Module) -> nn.Module:
     ######################################################################
     # Freeze all the network except the final layer. We need
     # to set ``requires_grad = False`` to freeze the parameters so that the
@@ -62,10 +50,10 @@ def freeze_model(model: nn.Module) -> nn.Module:
     # `here <https://pytorch.org/docs/notes/autograd.html#excluding-subgraphs-from-backward>`__.
     #
 
-    for param in model.parameters():
+    for param in _model.parameters():
         param.requires_grad = False
 
-    return model
+    return _model
 
 
 def max_index_file(directory, prefix, suffix):
@@ -87,7 +75,7 @@ def max_index_file(directory, prefix, suffix):
     return max_index, max_file
 
 
-def get_model(_models_dir: str, name: str, nclass: int, freeze: bool) -> nn.Module:
+def get_model(_models_dir: str, name: str, _num_class: int, _freeze: bool) -> nn.Module:
     _, max_file = max_index_file(_models_dir, name, 'pth')
 
     if max_file is None:
@@ -97,12 +85,12 @@ def get_model(_models_dir: str, name: str, nclass: int, freeze: bool) -> nn.Modu
         print(f'Loading model {max_file}.')
 
     _model = models.efficientnet_v2_l(weights=pretrained)
-    if freeze:
+    if _freeze:
         _model = freeze_model(_model)
 
     # Here the size of each output sample is set to 2.
     # Alternatively, it can be generalized to nn.Linear(num_ftrs, len(class_names)).
-    _model.classifier[1] = nn.Linear(_model.classifier[1].in_features, nclass)
+    _model.classifier[1] = nn.Linear(_model.classifier[1].in_features, _num_class)
 
     if max_file is not None:
         _model.load_state_dict(torch.load(os.path.join(_models_dir, max_file)))
@@ -226,7 +214,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 num_class = len(class_names)
 
 # 使用模型
-model = get_model(models_dir, model_name, num_class, freeze=freeze)
+model = get_model(models_dir, model_name, num_class, _freeze=freeze)
 
 model = model.to(device)
 
