@@ -8,14 +8,15 @@ from matplotlib import pyplot as plt
 from torchvision import datasets
 
 # 加载测试集
-test_dataset = datasets.ImageFolder('data/test')
-class_labels = test_dataset.classes
+val_dataset = datasets.ImageFolder('data/val')
+class_labels = val_dataset.classes
 
 # 加载预训练的 ResNet-152 模型
-model = models.resnet152()
-num_ftrs = model.fc.in_features
-model.fc = torch.nn.Linear(num_ftrs, len(class_labels))  # 将最后一层的输出调整为你的问题的类别数
-model.load_state_dict(torch.load('model152_6.pth', map_location=torch.device('cpu')))
+model = models.efficientnet_v2_l()
+num_ftrs = model.classifier[1].in_features
+model.classifier[1] = torch.nn.Linear(num_ftrs, len(class_labels))  # 将最后一层的输出调整为你的问题的类别数
+model.load_state_dict(torch.load('efv2l_zb.pth', map_location=torch.device('cpu')))
+
 model.eval()
 
 # 图像预处理
@@ -33,8 +34,8 @@ for i in range(6):
     ax = list(axes.flatten())[i]
 
     # 随机选择一张测试图片
-    random_index = random.randint(0, len(test_dataset) - 1)
-    image_path, target = test_dataset.imgs[random_index]
+    random_index = random.randint(0, len(val_dataset) - 1)
+    image_path, target = val_dataset.imgs[random_index]
 
     # 加载并预测图像
     image = Image.open(image_path).convert('RGB')

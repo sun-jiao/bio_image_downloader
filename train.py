@@ -17,11 +17,12 @@ from PIL import ImageFile
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 # Assuming you want to sample 10% of the dataset, the ratio should be 0.1
-sampling_ratio = 0.01
+sampling_ratio = 1
 
 data_dir = './data'
-models_dir = 'models'
+models_dir = './models'
 model_name = 'efv2l'
+num_class = None
 
 freeze = False
 
@@ -211,10 +212,8 @@ dataloaders['val'] = DataLoader(image_datasets['val'], batch_size=32, shuffle=Tr
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-num_class = len(class_names)
-
 # 使用模型
-model = get_model(models_dir, model_name, num_class, _freeze=freeze)
+model = get_model(models_dir, model_name, num_class or len(class_names), _freeze=freeze)
 
 model = model.to(device)
 
