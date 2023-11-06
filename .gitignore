@@ -127,6 +127,7 @@ dmypy.json
 # data directory, which may assigned with copyright
 download/*
 data/*
+images/*
 small_data/*
 hymenoptera_data/*
 models/*
