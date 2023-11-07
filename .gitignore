@@ -140,5 +140,7 @@ sampler.pkl
 *.pyth
 *.png
 *.jpg
+*.jpeg
+*.gif
 *.json
 *.zip
