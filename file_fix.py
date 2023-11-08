@@ -1,6 +1,5 @@
 import os
-import re
-
+from PIL import Image
 
 def filename():
     download = './data/train/'
@@ -76,3 +75,25 @@ def dump_number_fix():
                 os.removedirs(os.path.join(work_folder, f'{number}.{old_name}'))
             else:
                 seen_numbers[number] = name
+
+
+def resize_images(folder_path, max_resolution):
+    for root, dirs, files in os.walk(folder_path):
+        for file in files:
+            try:
+                image_path = os.path.join(root, file)
+                image = Image.open(image_path)
+                width, height = image.size
+
+                if width > max_resolution or height > max_resolution:
+                    ratio = min(max_resolution / width, max_resolution / height)
+                    new_width = int(width * ratio)
+                    new_height = int(height * ratio)
+                    resized_image = image.resize((new_width, new_height))
+                    resized_image.save(image_path)
+                    print(f"Resized image: {image_path} ({width}x{height} -> {new_width}x{new_height})")
+                else:
+                    print(f"Skipping image: {image_path} ({width}x{height})")
+            except OSError:
+                continue
+

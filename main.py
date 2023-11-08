@@ -14,6 +14,7 @@ if __name__ == '__main__':
           '[M]ove files according to the csv file.\r\n'
           '[F]ix file name illegal character.\r\n'
           '[R]emove empty files.\r\n'
+          '[B]ig files resize.\r\n'
           '[S]plit dataset.\r\n'
           'E[X]IT.')
     while True:
@@ -37,6 +38,8 @@ if __name__ == '__main__':
         elif user_input == 'S':
             dataset_split.split()
         elif user_input == 'A':
-            dataset_augment("/data/train/")
+            dataset_augment("./data/train/")
+        elif user_input == 'B':
+            file_fix.resize_images('./data', 1200)
         else:
             print('Illegal input.')

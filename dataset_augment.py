@@ -11,7 +11,7 @@ def dataset_augment(data_dir):
         subdir_path = os.path.join(data_dir, subdir)
         if os.path.isdir(subdir_path):
             num_images = len(os.listdir(subdir_path))
-            if num_images < 100:
+            if num_images < 50:
                 for image_file in os.listdir(subdir_path):
                     if image_file.startswith('augmented'):
                         continue
