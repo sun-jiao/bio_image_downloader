@@ -1,6 +1,7 @@
 import os
 from PIL import Image
 
+
 def filename():
     download = './data/train/'
     folder_list = os.listdir(download)
@@ -96,4 +97,3 @@ def resize_images(folder_path, max_resolution):
                     print(f"Skipping image: {image_path} ({width}x{height})")
             except OSError:
                 continue
-
