@@ -12,6 +12,7 @@ from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader, WeightedRandomSampler
 from torchvision import datasets, models, transforms
 from torchvision.models import EfficientNet_V2_L_Weights
+import torch.multiprocessing
 # from collections import Counter
 from PIL import ImageFile
 
@@ -107,8 +108,8 @@ def train_model(_model, _criterion, _optimizer, _scheduler, _num_epochs=25):
     best_model_wts = copy.deepcopy(_model.state_dict())
 
     for epoch in range(_num_epochs):
-        print('Epoch {}/{}'.format(epoch, _num_epochs - 1))
         print('-' * 10)
+        print('Epoch {}/{}'.format(epoch, _num_epochs - 1))
 
         # load best model weights
         # _model.load_state_dict(best_model_wts)
@@ -193,6 +194,8 @@ data_transforms = {
     ]),
 }
 
+torch.multiprocessing.set_sharing_strategy('file_system')
+
 if not os.path.exists(models_dir):
     os.mkdir(models_dir)
 
@@ -229,8 +232,7 @@ optimizer = optim.AdamW(params, lr=0.01)
 scheduler = lr_scheduler.ReduceLROnPlateau(
     optimizer, "max", factor=0.1, patience=3, verbose=True, threshold=5e-3, threshold_mode="abs")
 
-# for i in range(100):
+# for i in range(100):  # uncomment本行时下面两行都应该缩进，否则会连训100轮不保存。
 # 训练模型
 model = train_model(model, criterion, optimizer, scheduler, _num_epochs=25)
-
 save_model(model, models_dir, model_name)

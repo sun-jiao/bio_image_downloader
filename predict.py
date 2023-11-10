@@ -15,7 +15,7 @@ class_labels = val_dataset.classes
 model = models.efficientnet_v2_l()
 num_ftrs = model.classifier[1].in_features
 model.classifier[1] = torch.nn.Linear(num_ftrs, len(class_labels))  # 将最后一层的输出调整为你的问题的类别数
-model.load_state_dict(torch.load('efv2l_zb.pth', map_location=torch.device('cpu')))
+model.load_state_dict(torch.load('efv2l_zb_plus.pth', map_location=torch.device('cpu')))
 
 model.eval()
 
