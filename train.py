@@ -95,7 +95,7 @@ def get_model(_models_dir: str, name: str, _num_class: int, _freeze: bool) -> nn
     _model.classifier[1] = nn.Linear(_model.classifier[1].in_features, _num_class)
 
     if max_file is not None:
-        _model.load_state_dict(torch.load(os.path.join(_models_dir, max_file)))
+        _model.load_state_dict(torch.load(os.path.join(_models_dir, max_file), map_location=device))
 
     _model = _model.to(device)
     return _model
