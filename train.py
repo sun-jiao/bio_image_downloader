@@ -24,6 +24,7 @@ data_dir = './data'
 models_dir = './models'
 model_name = 'efv2l'
 num_class = None
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 freeze = False
 
@@ -178,61 +179,60 @@ def save_model(_model: nn.Module, _models_dir: str, name: str):
     torch.save(_model.state_dict(), os.path.join(_models_dir, f'{name}_{max_index + 1}.pth'))
 
 
-# 数据增强和预处理
-data_transforms = {
-    'train': transforms.Compose([
-        transforms.RandomResizedCrop(224),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ]),
-    'val': transforms.Compose([
-        transforms.Resize(224),
-        transforms.CenterCrop(224),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ]),
-}
+if __name__ == '__main__':
+    # 数据增强和预处理
+    data_transforms = {
+        'train': transforms.Compose([
+            transforms.RandomResizedCrop(224),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ]),
+        'val': transforms.Compose([
+            transforms.Resize(224),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ]),
+    }
 
-torch.multiprocessing.set_sharing_strategy('file_system')
+    torch.multiprocessing.set_sharing_strategy('file_system')
 
-if not os.path.exists(models_dir):
-    os.mkdir(models_dir)
+    if not os.path.exists(models_dir):
+        os.mkdir(models_dir)
 
-image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x),
-                                          data_transforms[x])
-                  for x in ['train', 'val']}
-dataloaders = {}
-dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val']}
-class_names = image_datasets['train'].classes
+    image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x),
+                                              data_transforms[x])
+                      for x in ['train', 'val']}
+    dataloaders = {}
+    dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val']}
+    class_names = image_datasets['train'].classes
 
-sampler: WeightedRandomSampler = get_sampler()
-num_cpus = multiprocessing.cpu_count()
+    sampler: WeightedRandomSampler = get_sampler()
+    num_cpus = multiprocessing.cpu_count()
 
-# 创建数据加载器
-dataloaders['train'] = DataLoader(image_datasets['train'], batch_size=32, sampler=sampler, num_workers=num_cpus)
-dataloaders['val'] = DataLoader(image_datasets['val'], batch_size=32, shuffle=True, num_workers=num_cpus)
+    # 创建数据加载器
+    dataloaders['train'] = DataLoader(image_datasets['train'], batch_size=32, sampler=sampler, num_workers=num_cpus)
+    dataloaders['val'] = DataLoader(image_datasets['val'], batch_size=32, shuffle=True, num_workers=num_cpus)
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    # 使用模型
+    model = get_model(models_dir, model_name, num_class or len(class_names), _freeze=freeze)
 
-# 使用模型
-model = get_model(models_dir, model_name, num_class or len(class_names), _freeze=freeze)
+    model = model.to(device)
 
-model = model.to(device)
+    criterion = nn.CrossEntropyLoss()
 
-criterion = nn.CrossEntropyLoss()
+    # 优化器
+    # Observe that only parameters of final layer are being optimized as
+    # opposed to before.
+    params = model.classifier[1].parameters() if freeze else model.parameters()
+    optimizer = optim.AdamW(params, lr=0.01)
 
-# 优化器
-# Observe that only parameters of final layer are being optimized as
-# opposed to before.
-params = model.classifier[1].parameters() if freeze else model.parameters()
-optimizer = optim.AdamW(params, lr=0.01)
+    # 学习率调整策略
+    scheduler = lr_scheduler.ReduceLROnPlateau(
+        optimizer, "max", factor=0.1, patience=3, verbose=True, threshold=5e-3, threshold_mode="abs")
 
-# 学习率调整策略
-scheduler = lr_scheduler.ReduceLROnPlateau(
-    optimizer, "max", factor=0.1, patience=3, verbose=True, threshold=5e-3, threshold_mode="abs")
-
-# for i in range(100):  # uncomment本行时下面两行都应该缩进，否则会连训100轮不保存。
-# 训练模型
-model = train_model(model, criterion, optimizer, scheduler, _num_epochs=25)
-save_model(model, models_dir, model_name)
+    # for i in range(100):  # uncomment本行时下面两行都应该缩进，否则会连训100轮不保存。
+    # 训练模型
+    model = train_model(model, criterion, optimizer, scheduler, _num_epochs=25)
+    save_model(model, models_dir, model_name)
