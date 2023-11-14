@@ -58,8 +58,8 @@ class CfhDownloader(BaseDownloader, ABC):
 if __name__ == '__main__':
     start = datetime.now()
 
-    butterfly = CfhDownloader(name="绿鹭", directory="download_test", page_size=25, check=False)
-    butterfly.download()
+    downloader = CfhDownloader(name="绿鹭", directory="download_test", page_size=25, check=False)
+    downloader.download()
 
     end = datetime.now()
     print("time cost: ")

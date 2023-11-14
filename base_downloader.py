@@ -35,7 +35,7 @@ async def fetch(client, url):
             pass
 
 
-def get_filename(url):
+def _get_filename(url):
     if 'xeno-canto' in url:
         return None
 
@@ -59,15 +59,16 @@ def get_filename(url):
     return f'{filename_main}.{file_suf}'
 
 
-async def async_save(url, directory):
+async def async_save(url, directory, filename_getter):
     """
     call 'fetch' to download image and save it in specified firectory.
     -----------
+    :param filename_getter: def
     :param url: string, url of image to be downloaded
     :param directory: string, path of the directory where image to be downloaded to
     """
 
-    filename = get_filename(url)
+    filename = filename_getter(url)
 
     if filename is None:
         return
@@ -126,6 +127,12 @@ class BaseDownloader(metaclass=ABCMeta):
     def get_image_url(self, json_item):
         pass
 
+    def get_filename(self, url):
+        return _get_filename(url)
+
+    def get_photo_list_json(self, json_object):
+        return json_object[self.photo_list_key]
+
     def get_header(self):
         return {
             'User-Agent': self.ua.random,
@@ -148,12 +155,14 @@ class BaseDownloader(metaclass=ABCMeta):
                     pass
 
             try:
-                data = json.loads(image_list.text)[self.photo_list_key]
+                data = json.loads(image_list.text)
             except KeyError:
                 break
             except JSONDecodeError:
                 print(f'image_list:{image_list.text}[{self.photo_list_key}]')
                 break
+
+            data = self.get_photo_list_json(data)
 
             # download links in this page.
             if not os.path.exists(self.directory):
@@ -198,7 +207,7 @@ class BaseDownloader(metaclass=ABCMeta):
                     break
 
             loop = asyncio.get_event_loop()
-            tasks = [loop.create_task(async_save(url, self.directory)) for url in photo_list]
+            tasks = [loop.create_task(async_save(url, self.directory, self.get_filename)) for url in photo_list]
             if len(tasks) > 0:
                 loop.run_until_complete(asyncio.wait(tasks))
             # async download End

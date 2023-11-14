@@ -80,8 +80,8 @@ class GbifDownloader(BaseDownloader):
 if __name__ == '__main__':
     start = datetime.now()
 
-    butterfly = GbifDownloader(name="Nothocercus bonapartei", directory="Nothocercus_bonapartei", page_size=25, check=True)
-    butterfly.download()
+    downloader = GbifDownloader(name="Nothocercus bonapartei", directory="Nothocercus_bonapartei", page_size=25, check=True)
+    downloader.download()
 
     end = datetime.now()
     print("time cost: ")

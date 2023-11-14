@@ -20,10 +20,10 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 # Assuming you want to sample 10% of the dataset, the ratio should be 0.1
 sampling_ratio = 1
 
-data_dir = './data'
+data_dir = './images'
 models_dir = './models'
 model_name = 'efv2l'
-num_class = None
+num_class = 533
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 freeze = False

@@ -3,8 +3,12 @@
 key位于具有Suggest class的一个div的子div的data-suggest-url属性中，例如：
 
 <div data-suggest-url="https://api.ebird.org/v2/ref/taxon/find?key=jfekjedvescr&q=%QUERY"> </div>
-
 直接将%QUERY替换为检索关键词即可，注意关键词中不能以下划线代替空格。
+
+或者macauly library的是这样：
+https://taxonomy.api.macaulaylibrary.org/v1/taxonomy?key=PUB5447877383&locale=zh_SIM&q=Melanopareia%20torquata%20bitorquata
+
+不过在Clements分类表格里面也有。
 
 返回的数据格式类似于：
 
@@ -29,6 +33,7 @@ https://media.ebird.org/api/v2/stats/media-count?taxonCode=chbpar3&birdOnly=true
 然后可以使用此url来获取图片列表：
 
 https://media.ebird.org/api/v2/search?taxonCode=chbpar3&sort=rating_rank_desc&mediaType=photo&birdOnly=true
+https://search.macaulaylibrary.org/api/v2/search?taxonCode=colcre2&sort=rating_rank_desc&mediaType=photo&birdOnly=true
 
 返回数据格式：
 
@@ -47,7 +52,10 @@ https://media.ebird.org/api/v2/search?taxonCode=chbpar3&sort=rating_rank_desc&me
 最后一张图片会额外显示一个cursorMark，下一次的请求添加cursorMark参数进行翻页。
 
 https://media.ebird.org/api/v2/search?taxonCode=brnpri2&sort=rating_rank_desc&mediaType=photo&birdOnly=true&initialCursorMark=MEUtMTZfXzQ3Mjc3MzY0MQ
+https://search.macaulaylibrary.org/api/v2/search?taxonCode=brnpri2&sort=rating_rank_desc&mediaType=photo&birdOnly=true&initialCursorMark=MjAyMy0xMS0wNlQyMjowOTowNS43NjM4MDVfXzYxMDg1MDUzMQ
 
 然后从这里拿到图片：
 
 https://cdn.download.ams.birds.cornell.edu/api/v2/asset/{assetId}/{resolution}
+
+resolution可以是480, 640, 1200, 2400

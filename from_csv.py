@@ -13,8 +13,8 @@ def from_csv_in_cfh(filename):
     with open(filename, encoding='utf-8') as file:
         f_csv = csv.reader(file)
         for row in f_csv:
-            butterfly = CfhDownloader(name=row[1], directory=row[2], check=True, base_directory='./data/train/')
-            butterfly.download()
+            downloader = CfhDownloader(name=row[1], directory=row[2], check=True, base_directory='./data/train/')
+            downloader.download()
 
 
 def update_csv(filename, new_csv, directory='./data/train/'):
@@ -34,9 +34,9 @@ def from_csv_in_gbif(filename):
     with open(filename, encoding='utf-8') as file:
         f_csv = csv.reader(file)
         for row in f_csv:
-            butterfly = GbifDownloader(name=row[1], directory=row[2], check=True, folder_size=2000,
+            downloader = GbifDownloader(name=row[1], directory=row[2], check=True, folder_size=2000,
                                        base_directory='./data/train/')
-            butterfly.download()
+            downloader.download()
 
 
 def from_csv_in_bing(filename):
