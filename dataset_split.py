@@ -1,6 +1,5 @@
 import os
 import random
-import shutil
 
 
 def split(train=9, val=1):
