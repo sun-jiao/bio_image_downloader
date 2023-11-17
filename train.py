@@ -1,4 +1,5 @@
 import copy
+import math
 import multiprocessing
 import os
 # import pickle
@@ -9,36 +10,45 @@ import torch.nn as nn
 import torch.optim as optim
 from sklearn.utils import class_weight
 from torch.optim import lr_scheduler
-from torch.utils.data import DataLoader, WeightedRandomSampler
+from torch.utils.data import DataLoader, WeightedRandomSampler, RandomSampler
 from torchvision import datasets, models, transforms
+from torchvision.datasets.folder import default_loader
 from torchvision.models import EfficientNet_V2_L_Weights
 import torch.multiprocessing
 # from collections import Counter
 from PIL import ImageFile
 
+if torch.cuda.is_available():
+    from torch.cuda.amp import autocast as autocast, GradScaler
+
+    scaler = GradScaler()
+
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 # Assuming you want to sample 10% of the dataset, the ratio should be 0.1
-sampling_ratio = 1
+sampling_ratio = 1.0
 
 data_dir = './images'
 models_dir = './models'
-model_name = 'efv2l'
-num_class = 533
+model_name = 'efv2l_bird'
+num_class = 12000
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 freeze = False
 
 
-def get_sampler() -> WeightedRandomSampler:
-    targets = image_datasets['train'].targets  # 获取样本标签列表
-    weights = class_weight.compute_sample_weight("balanced", targets)
-    class_weights = torch.from_numpy(weights)
-
+def get_sampler(dataset, is_train):
     # sampling ratio is defined out scope for usage in train.
-    num_samples = int(len(image_datasets['train']) * sampling_ratio)
+    num_samples = int(math.ceil(len(dataset) * sampling_ratio))
 
     # 创建可调整权重的采样器
-    _sampler = WeightedRandomSampler(weights=class_weights, num_samples=num_samples, replacement=True)
+    if is_train:
+        targets = dataset.targets  # 获取样本标签列表
+        weights = class_weight.compute_sample_weight("balanced", targets)
+        class_weights = torch.from_numpy(weights)
+
+        _sampler = WeightedRandomSampler(weights=class_weights, num_samples=num_samples, replacement=True)
+    else:
+        _sampler = RandomSampler(data_source=dataset, num_samples=num_samples, replacement=True)
 
     return _sampler
 
@@ -78,6 +88,22 @@ def max_index_file(directory, prefix, suffix):
     return max_index, max_file
 
 
+class CustomImageFolder(datasets.ImageFolder):
+    def __init__(self, root, transform=None, target_transform=None, loader=default_loader):
+        super(CustomImageFolder, self).__init__(root, transform, target_transform, loader)
+
+        # 重新生成类别到索引的映射
+        self.classes, self.class_to_idx = self._find_classes(self.root)
+
+    def _find_classes(self, dir):
+        class_to_idx = {d.split('.', 1)[1]: int(d.split('.')[0]) for d in os.listdir(dir) if
+                        os.path.isdir(os.path.join(dir, d))}
+        classes = [d.split('.', 1)[1] for d in os.listdir(dir) if os.path.isdir(os.path.join(dir, d))]
+        classes.sort()
+
+        return classes, class_to_idx
+
+
 def get_model(_models_dir: str, name: str, _num_class: int, _freeze: bool) -> nn.Module:
     _, max_file = max_index_file(_models_dir, name, 'pth')
 
@@ -102,7 +128,7 @@ def get_model(_models_dir: str, name: str, _num_class: int, _freeze: bool) -> nn
     return _model
 
 
-def train_model(_model, _criterion, _optimizer, _scheduler, _num_epochs=25):
+def train_model(_model, _dataloaders, _criterion, _optimizer, _scheduler, _num_epochs=25):
     since = time.time()
 
     best_acc = 0.0
@@ -125,7 +151,7 @@ def train_model(_model, _criterion, _optimizer, _scheduler, _num_epochs=25):
             running_corrects = 0
 
             # Iterate over data.
-            for inputs, labels in dataloaders[phase]:
+            for inputs, labels in _dataloaders[phase]:
                 inputs = inputs.to(device)
                 labels = labels.to(device)
 
@@ -135,25 +161,40 @@ def train_model(_model, _criterion, _optimizer, _scheduler, _num_epochs=25):
                 # forward
                 # track history if only in train
                 with torch.set_grad_enabled(phase == 'train'):
-                    outputs = _model(inputs)
-                    _, preds = torch.max(outputs, 1)
-                    loss = _criterion(outputs, labels)
+                    # compute output
+                    if torch.cuda.is_available():
+                        with autocast():
+                            outputs = _model(inputs)
+                            _, preds = torch.max(outputs, 1)
+                            loss = _criterion(outputs, labels)
+                        if phase == 'train':
+                            # Scales loss. 为了梯度放大.
+                            scaler.scale(loss).backward()
 
-                    # backward + optimize only if in training phase
-                    if phase == 'train':
-                        loss.backward()
-                        _optimizer.step()
+                            # scaler.step() 首先把梯度的值unscale回来.
+                            # 如果梯度的值不是 infs 或者 NaNs, 那么调用optimizer.step()来更新权重,
+                            # 否则，忽略step调用，从而保证权重不更新（不被破坏）
+                            scaler.step(_optimizer)
+
+                            # 准备着，看是否要增大scaler
+                            scaler.update()
+                    else:
+                        outputs = _model(inputs)
+                        _, preds = torch.max(outputs, 1)
+                        loss = _criterion(outputs, labels)
+                        # backward + optimize only if in training phase
+                        if phase == 'train':
+                            loss.backward()
+                            _optimizer.step()
 
                 # statistics
                 running_loss += loss.item() * inputs.size(0)
                 running_corrects += torch.sum(preds == labels.data)
 
-            epoch_loss = running_loss / dataset_sizes[phase]
-            epoch_acc = running_corrects.double() / dataset_sizes[phase]
+            epoch_loss = (running_loss / dataset_sizes[phase]) / sampling_ratio
+            epoch_acc = (running_corrects.double() / dataset_sizes[phase]) / sampling_ratio
 
             if phase == 'train':
-                epoch_loss = epoch_loss / sampling_ratio
-                epoch_acc = epoch_acc / sampling_ratio
                 _scheduler.step(epoch_acc)
 
             print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss, epoch_acc))
@@ -201,19 +242,18 @@ if __name__ == '__main__':
     if not os.path.exists(models_dir):
         os.mkdir(models_dir)
 
-    image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x),
-                                              data_transforms[x])
+    image_datasets = {x: CustomImageFolder(os.path.join(data_dir, x), data_transforms[x])
                       for x in ['train', 'val']}
-    dataloaders = {}
     dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val']}
     class_names = image_datasets['train'].classes
 
-    sampler: WeightedRandomSampler = get_sampler()
+    samplers = {x: get_sampler(image_datasets[x], is_train=x == 'train')
+                for x in ['train', 'val']}
     num_cpus = multiprocessing.cpu_count()
 
     # 创建数据加载器
-    dataloaders['train'] = DataLoader(image_datasets['train'], batch_size=32, sampler=sampler, num_workers=num_cpus)
-    dataloaders['val'] = DataLoader(image_datasets['val'], batch_size=32, shuffle=True, num_workers=num_cpus)
+    dataloaders = {x: DataLoader(image_datasets[x], batch_size=32, sampler=samplers[x], num_workers=num_cpus)
+                   for x in ['train', 'val']}
 
     # 使用模型
     model = get_model(models_dir, model_name, num_class or len(class_names), _freeze=freeze)
@@ -226,7 +266,7 @@ if __name__ == '__main__':
     # Observe that only parameters of final layer are being optimized as
     # opposed to before.
     params = model.classifier[1].parameters() if freeze else model.parameters()
-    optimizer = optim.AdamW(params, lr=0.01)
+    optimizer = optim.AdamW(params, lr=0.001)
 
     # 学习率调整策略
     scheduler = lr_scheduler.ReduceLROnPlateau(
@@ -234,5 +274,5 @@ if __name__ == '__main__':
 
     # for i in range(100):  # uncomment本行时下面两行都应该缩进，否则会连训100轮不保存。
     # 训练模型
-    model = train_model(model, criterion, optimizer, scheduler, _num_epochs=25)
+    model = train_model(model, dataloaders, criterion, optimizer, scheduler, _num_epochs=300)
     save_model(model, models_dir, model_name)
