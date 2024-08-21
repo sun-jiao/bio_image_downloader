@@ -8,6 +8,9 @@ import time
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from pycls.core.config import cfg
+import pycls.core.builders as model_builder
+
 from sklearn.utils import class_weight
 from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader, WeightedRandomSampler, RandomSampler
@@ -252,7 +255,7 @@ if __name__ == '__main__':
     num_cpus = multiprocessing.cpu_count()
 
     # 创建数据加载器
-    dataloaders = {x: DataLoader(image_datasets[x], batch_size=32, sampler=samplers[x], num_workers=num_cpus)
+    dataloaders = {x: DataLoader(image_datasets[x], batch_size=196, sampler=samplers[x], num_workers=num_cpus)
                    for x in ['train', 'val']}
 
     # 使用模型
@@ -274,5 +277,5 @@ if __name__ == '__main__':
 
     # for i in range(100):  # uncomment本行时下面两行都应该缩进，否则会连训100轮不保存。
     # 训练模型
-    model = train_model(model, dataloaders, criterion, optimizer, scheduler, _num_epochs=300)
+    model = train_model(model, dataloaders, criterion, optimizer, scheduler, _num_epochs=25)
     save_model(model, models_dir, model_name)

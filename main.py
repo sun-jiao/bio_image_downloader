@@ -22,9 +22,9 @@ if __name__ == '__main__':
         if user_input == 'C':
             from_csv.from_csv_in_cfh('labels.csv')
         elif user_input == 'G':
-            from_csv.from_csv_in_gbif('labels.csv')
+            from_csv.from_csv_in_gbif('birds.csv')
         elif user_input == 'U':
-            from_csv.update_csv('labels.csv', 'new_csv.csv')
+            from_csv.update_csv('birds.csv', 'birdsnew_csv.csv')
         elif user_input == 'T':
             print('not supported yet.')
         elif user_input == 'X':
