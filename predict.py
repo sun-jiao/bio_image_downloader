@@ -7,15 +7,13 @@ from PIL import Image
 from matplotlib import pyplot as plt
 from torchvision import datasets
 
+import metafg_model
+
 # 加载测试集
 val_dataset = datasets.ImageFolder('data/val')
 class_labels = val_dataset.classes
 
-# 加载预训练的 ResNet-152 模型
-model = models.efficientnet_v2_l()
-num_ftrs = model.classifier[1].in_features
-model.classifier[1] = torch.nn.Linear(num_ftrs, len(class_labels))  # 将最后一层的输出调整为你的问题的类别数
-model.load_state_dict(torch.load('models/efv2l_6.pth', map_location=torch.device('cpu')))
+model = metafg_model.get_metafg_model()
 
 model.eval()
 
@@ -57,7 +55,8 @@ for i in range(6):
     title = f"label:{class_labels[target]}"
     content = ''
     for j in range(len(indices)):
-        content += f"{class_labels[indices[j]]},"
+        # content += f"{class_labels[indices[j]]},"
+        content += f"{indices[j]},"
 
     ax.set_title(title)
     ax.text(0.5, -0.1, content, transform=ax.transAxes, ha="center")

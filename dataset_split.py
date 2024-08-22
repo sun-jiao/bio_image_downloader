@@ -22,4 +22,4 @@ def split(train=9, val=1):
         val_amount = int(val * len(file_list) / total)
         for i in range(val_amount):
             file_dir = os.path.join(label_dir, file_list[i])
-            os.rename(file_dir, file_dir.replace('train', 'val'))
+            os.rename(file_dir, file_dir.replace('train', 'val', 1))
