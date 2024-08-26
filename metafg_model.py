@@ -6,8 +6,8 @@ from torch import nn
 
 
 def get_metafg_model():
-    model.fc = nn.Linear(model.fc.in_features, 10320)
     model = torchvision.models.resnet34(weights=None)
+    model.fc = nn.Linear(model.fc.in_features, 11000)
 
     # Load the state dict
     state_dict = torch.load('/home/sunjiao/Downloads/LBird-31_checkpoint.pth.tar', map_location=torch.device('cpu'))[
