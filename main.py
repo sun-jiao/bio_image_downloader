@@ -22,7 +22,7 @@ if __name__ == '__main__':
         if user_input == 'C':
             from_csv.from_csv_in_cfh('labels.csv')
         elif user_input == 'G':
-            from_csv.from_csv_in_gbif('birds.csv')
+            from_csv.from_csv_in_gbif('dib-appendix-0-10.csv')
         elif user_input == 'U':
             from_csv.update_csv('birds.csv', 'birdsnew_csv.csv')
         elif user_input == 'T':

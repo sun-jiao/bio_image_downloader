@@ -10,7 +10,7 @@ def get_metafg_model():
     model.fc = nn.Linear(model.fc.in_features, 11000)
 
     # Load the state dict
-    state_dict = torch.load('/home/sunjiao/Downloads/LBird-31_checkpoint.pth.tar', map_location=torch.device('cpu'))[
+    state_dict = torch.load('/home/sunjiao/Downloads/model_best.pth.tar', map_location=torch.device('cpu'))[
         'state_dict']
 
     # Create a new state dict with keys modified
